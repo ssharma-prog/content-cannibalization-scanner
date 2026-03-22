@@ -23,6 +23,25 @@ const CONTENT_SELECTORS = [
   '#content'
 ];
 
+const LOGIN_SIGNALS = [
+  /name=["']log["']/i,
+  /name=["']pwd["']/i,
+  /name=["']password["']/i,
+  /id=["']loginform["']/i,
+  /id=["']user_login["']/i,
+  /action=["'][^"']*wp-login/i,
+  /action=["'][^"']*login/i,
+  /<title>[^<]*(log\s*in|sign\s*in|authenticate)[^<]*<\/title>/i
+];
+
+function isLoginPage(html) {
+  let matches = 0;
+  for (const pattern of LOGIN_SIGNALS) {
+    if (pattern.test(html)) matches++;
+  }
+  return matches >= 2; // require 2+ signals to avoid false positives
+}
+
 function extractFromHtml(html, url) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -65,6 +84,10 @@ async function extractPosts(urls, onProgress, signal) {
     const promises = batch.map(async (url) => {
       try {
         const html = await fetchViaProxy(url, { signal });
+        if (isLoginPage(html)) {
+          failures.push({ url, reason: 'Login page detected' });
+          return null;
+        }
         const extracted = extractFromHtml(html, url);
         if (extracted.text.length < 50) {
           failures.push({ url, reason: 'Too little content' });

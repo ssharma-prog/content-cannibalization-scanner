@@ -6,14 +6,25 @@ import { normalizeUrl, getBaseUrl } from './utils.js';
 const BLOG_INCLUDE = ['/blog/', /\/\d{4}\/\d{2}\//, /\/\d{4}\/\d{2}\/\d{2}\//];
 const BLOG_EXCLUDE = ['/category/', '/tag/', '/author/', '/page/', '/feed/', '/wp-content/', '/wp-admin/', '/wp-json/'];
 
+let excludeSlugs = new Set();
+
+function setExcludeSlugs(slugs) {
+  excludeSlugs = new Set(
+    slugs.map(s => s.trim().toLowerCase().replace(/^\/|\/$/g, '')).filter(Boolean)
+  );
+}
+
 function isBlogPost(url) {
   const path = new URL(url).pathname;
   // Exclude known non-post patterns
   if (BLOG_EXCLUDE.some(ex => path.includes(ex))) return false;
+  // Exclude user-specified slugs
+  const segments = path.split('/').filter(Boolean);
+  const slug = segments.length > 0 ? segments[segments.length - 1].toLowerCase() : '';
+  if (excludeSlugs.has(slug)) return false;
   // Include if matches blog patterns, or if it's a leaf page (has a slug)
   if (BLOG_INCLUDE.some(inc => typeof inc === 'string' ? path.includes(inc) : inc.test(path))) return true;
   // Fallback: include paths that look like posts (not just /)
-  const segments = path.split('/').filter(Boolean);
   return segments.length >= 1 && !path.endsWith('.xml');
 }
 
@@ -120,4 +131,4 @@ async function discoverSitemap(siteUrl, onStatus, signal) {
   return blogUrls.length > 0 ? blogUrls : allUrls;
 }
 
-export { discoverSitemap };
+export { discoverSitemap, setExcludeSlugs };

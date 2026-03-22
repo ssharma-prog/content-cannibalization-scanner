@@ -1,6 +1,6 @@
 // Orchestrator: UI events, workflow coordination
 
-import { discoverSitemap } from './sitemap.js';
+import { discoverSitemap, setExcludeSlugs } from './sitemap.js';
 import { extractPosts } from './extractor.js';
 import { computeAllPairs } from './tfidf.js';
 import { setApiKey, clearApiKey, hasApiKey, analyzeWithGemini } from './gemini.js';
@@ -17,6 +17,7 @@ let scanController = null;
 // DOM refs
 const urlInput = document.getElementById('site-url');
 const maxPostsInput = document.getElementById('max-posts');
+const excludeSlugsInput = document.getElementById('exclude-slugs');
 const scanBtn = document.getElementById('scan-btn');
 const cancelBtn = document.getElementById('cancel-btn');
 const statusEl = document.getElementById('status');
@@ -57,6 +58,10 @@ scanBtn.addEventListener('click', async () => {
   let url = urlInput.value.trim();
   if (!url) { setStatus('Enter a URL', 'error'); return; }
   if (!url.startsWith('http')) url = 'https://' + url;
+
+  // Parse exclude slugs
+  const excludeText = excludeSlugsInput.value.trim();
+  setExcludeSlugs(excludeText ? excludeText.split(',') : []);
 
   const maxPosts = parseInt(maxPostsInput.value) || 200;
   scanController = new AbortController();
