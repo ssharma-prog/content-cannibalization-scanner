@@ -42,8 +42,8 @@ function sortAndRender(container) {
     let vb = b[sortCol] ?? -1;
     if (typeof va === 'string') va = va.toLowerCase();
     if (typeof vb === 'string') vb = vb.toLowerCase();
-    if (va < vb) return sortDir;
-    if (va > vb) return -sortDir;
+    if (va < vb) return -sortDir;
+    if (va > vb) return sortDir;
     return 0;
   });
 
