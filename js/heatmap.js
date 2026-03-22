@@ -5,13 +5,18 @@ function renderHeatmap(container, matrix, labels, onCellClick) {
     l.length > 30 ? l.slice(0, 27) + '...' : l
   );
 
-  const customText = [];
+  // Build full-title text array for hover (row = y, col = x)
+  const fullTitleX = [];
+  const fullTitleY = [];
   for (let i = 0; i < labels.length; i++) {
-    const row = [];
+    const rowX = [];
+    const rowY = [];
     for (let j = 0; j < labels.length; j++) {
-      row.push(`${labels[i]}<br>vs<br>${labels[j]}<br>Score: ${matrix[i][j].toFixed(3)}`);
+      rowY.push(labels[i]);
+      rowX.push(labels[j]);
     }
-    customText.push(row);
+    fullTitleX.push(rowX);
+    fullTitleY.push(rowY);
   }
 
   const data = [{
@@ -27,8 +32,11 @@ function renderHeatmap(container, matrix, labels, onCellClick) {
       [0.7, '#e84545'],
       [1.0, '#ff0000']
     ],
-    hovertext: customText,
-    hoverinfo: 'text',
+    customdata: fullTitleX.map((rowX, i) =>
+      rowX.map((xTitle, j) => [fullTitleY[i][j], xTitle])
+    ),
+    hovertemplate:
+      '<b>%{customdata[0]}</b><br>vs<br><b>%{customdata[1]}</b><br>Score: %{z:.3f}<extra></extra>',
     showscale: true,
     colorbar: {
       title: 'Similarity',
@@ -85,26 +93,24 @@ function applyThreshold(container, matrix, labels, threshold, onCellClick) {
     Array.from(row).map(val => val >= threshold || val === 1.0 ? val : null)
   );
 
-  const shortLabels = labels.map(l =>
-    l.length > 30 ? l.slice(0, 27) + '...' : l
-  );
-
-  const customText = [];
+  const fullTitleX = [];
+  const fullTitleY = [];
   for (let i = 0; i < labels.length; i++) {
-    const row = [];
+    const rowX = [];
+    const rowY = [];
     for (let j = 0; j < labels.length; j++) {
-      if (filtered[i][j] !== null) {
-        row.push(`${labels[i]}<br>vs<br>${labels[j]}<br>Score: ${matrix[i][j].toFixed(3)}`);
-      } else {
-        row.push('');
-      }
+      rowY.push(labels[i]);
+      rowX.push(labels[j]);
     }
-    customText.push(row);
+    fullTitleX.push(rowX);
+    fullTitleY.push(rowY);
   }
 
   Plotly.restyle(container, {
     z: [filtered],
-    hovertext: [customText]
+    customdata: [fullTitleX.map((rowX, i) =>
+      rowX.map((xTitle, j) => [fullTitleY[i][j], xTitle])
+    )]
   });
 }
 
