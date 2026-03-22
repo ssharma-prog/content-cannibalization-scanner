@@ -4,7 +4,7 @@ import { discoverSitemap } from './sitemap.js';
 import { extractPosts } from './extractor.js';
 import { computeAllPairs } from './tfidf.js';
 import { setApiKey, clearApiKey, hasApiKey, analyzeWithGemini } from './gemini.js';
-import { renderHeatmap, applyThreshold } from './heatmap.js';
+import { renderHeatmap } from './heatmap.js';
 import { renderTable, scrollToPair, exportCsv, filterTable } from './table.js';
 
 // State
@@ -118,9 +118,7 @@ scanBtn.addEventListener('click', async () => {
       Computed in <strong>${elapsed}ms</strong>
     `;
 
-    renderHeatmap(heatmapContainer, matrix, labels, (i, j) => {
-      scrollToPair(i, j);
-    });
+    renderHeatmap(heatmapContainer, matrix);
 
     renderTable(tableContainer, pairs.filter(p => p.tfidfScore >= parseFloat(thresholdSlider.value)));
 
@@ -147,7 +145,6 @@ cancelBtn.addEventListener('click', () => {
 thresholdSlider.addEventListener('input', () => {
   const val = parseFloat(thresholdSlider.value);
   thresholdVal.textContent = val.toFixed(2);
-  applyThreshold(heatmapContainer, matrix, labels, val, (i, j) => scrollToPair(i, j));
   renderTable(tableContainer, pairs.filter(p => p.tfidfScore >= val));
 });
 
