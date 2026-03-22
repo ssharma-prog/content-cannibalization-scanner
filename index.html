@@ -22,9 +22,8 @@
         <button id="scan-btn">Scan</button>
         <button id="cancel-btn" class="danger" style="display:none">Cancel</button>
       </div>
-      <div class="input-row" style="margin-top: 8px;">
-        <input type="text" id="exclude-slugs" value="about, about-us, contact, contact-us, privacy, privacy-policy, terms, terms-of-service, terms-and-conditions, cookie-policy, disclaimer, cart, checkout, account, my-account, wishlist, login, register, signup, thank-you, sample-page, home" placeholder="Exclude slugs (comma-separated)">
-      </div>
+      <label for="exclude-slugs" style="margin-top: 10px; display: block;">Exceptions</label>
+      <input type="text" id="exclude-slugs" value="about, about-us, contact, contact-us, privacy, privacy-policy, terms, terms-of-service, terms-and-conditions, cookie-policy, disclaimer, cart, checkout, account, my-account, wishlist, login, register, signup, thank-you, sample-page, home" placeholder="Slugs to exclude (comma-separated)" style="width: 100%; margin-top: 4px;">
       <div id="status" class="status info"></div>
       <div id="progress-bar" class="progress-bar">
         <div id="progress-fill" class="progress-fill"></div>
