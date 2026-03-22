@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Content Cannibalization Scanner</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://corsproxy.io/ https://api.allorigins.win/ https://generativelanguage.googleapis.com/; img-src 'self' data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://corsproxy.io/ https://api.allorigins.win/; img-src 'self' data:;">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -31,22 +31,6 @@
       </div>
     </div>
 
-    <!-- Gemini (Optional) -->
-    <div class="card">
-      <h2>Gemini AI Analysis (Optional)</h2>
-      <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px;">
-        API key is held in memory only — never stored or sent through proxies.
-      </p>
-      <div class="gemini-row">
-        <input type="password" id="gemini-key" placeholder="Gemini API key" autocomplete="off">
-        <button id="gemini-set" class="secondary">Set Key</button>
-        <button id="gemini-clear" class="danger" style="display:none">Clear Key</button>
-        <span id="gemini-status" class="gemini-status">No key set</span>
-      </div>
-      <div style="margin-top: 10px;">
-        <button id="gemini-run" class="secondary" disabled>Run Gemini Analysis on Top Pairs</button>
-      </div>
-    </div>
 
     <!-- Results -->
     <div id="results" style="display:none">

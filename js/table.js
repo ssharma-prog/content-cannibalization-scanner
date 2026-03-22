@@ -6,27 +6,8 @@ let currentData = [];
 let sortCol = 'tfidfScore';
 let sortDir = -1; // -1 = desc
 
-function renderTable(container, pairs, geminiResults) {
-  // Merge Gemini results if available
-  const geminiMap = new Map();
-  if (geminiResults) {
-    for (const r of geminiResults) {
-      const key = `${r.urlA}|${r.urlB}`;
-      geminiMap.set(key, r);
-    }
-  }
-
-  currentData = pairs.map(p => {
-    const key = `${p.urlA}|${p.urlB}`;
-    const g = geminiMap.get(key);
-    return {
-      ...p,
-      geminiScore: g?.geminiScore ?? null,
-      recommendation: g?.recommendation ?? '',
-      overlappingTopics: g?.overlappingTopics ?? []
-    };
-  });
-
+function renderTable(container, pairs) {
+  currentData = pairs.map(p => ({ ...p }));
   sortAndRender(container);
 }
 
@@ -41,20 +22,6 @@ function sortAndRender(container) {
     return 0;
   });
 
-  const recClass = (rec) => {
-    if (rec === 'merge') return 'rec-merge';
-    if (rec === 'differentiate') return 'rec-diff';
-    if (rec === 'keep') return 'rec-keep';
-    return '';
-  };
-
-  const recLabel = (rec) => {
-    if (rec === 'merge') return 'Merge';
-    if (rec === 'differentiate') return 'Differentiate';
-    if (rec === 'keep') return 'Keep';
-    return rec || '—';
-  };
-
   const arrow = (col) => {
     if (sortCol !== col) return '';
     return sortDir === -1 ? ' ▼' : ' ▲';
@@ -66,19 +33,15 @@ function sortAndRender(container) {
         <tr>
           <th data-col="titleA" class="sortable">Post A${arrow('titleA')}</th>
           <th data-col="titleB" class="sortable">Post B${arrow('titleB')}</th>
-          <th data-col="tfidfScore" class="sortable num">TF-IDF Score${arrow('tfidfScore')}</th>
-          <th data-col="geminiScore" class="sortable num">Gemini Score${arrow('geminiScore')}</th>
-          <th data-col="recommendation" class="sortable">Recommendation${arrow('recommendation')}</th>
+          <th data-col="tfidfScore" class="sortable num">Similarity Score${arrow('tfidfScore')}</th>
         </tr>
       </thead>
       <tbody>
-        ${currentData.map((p, i) => `
+        ${currentData.map((p) => `
           <tr id="pair-${p.indexA}-${p.indexB}" class="${p.tfidfScore >= 0.5 ? 'high-sim' : p.tfidfScore >= 0.3 ? 'med-sim' : ''}">
             <td><a href="${escapeHtml(p.urlA)}" target="_blank" rel="noopener" title="${escapeHtml(p.titleA)}">${escapeHtml(shortenTitle(p.titleA, 60))}</a></td>
             <td><a href="${escapeHtml(p.urlB)}" target="_blank" rel="noopener" title="${escapeHtml(p.titleB)}">${escapeHtml(shortenTitle(p.titleB, 60))}</a></td>
             <td class="num">${p.tfidfScore.toFixed(3)}</td>
-            <td class="num">${p.geminiScore !== null ? p.geminiScore.toFixed(2) : '—'}</td>
-            <td class="${recClass(p.recommendation)}">${recLabel(p.recommendation)}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -114,16 +77,13 @@ function scrollToPair(indexA, indexB) {
 function exportCsv() {
   if (currentData.length === 0) return;
 
-  const headers = ['Post A Title', 'Post A URL', 'Post B Title', 'Post B URL', 'TF-IDF Score', 'Gemini Score', 'Recommendation', 'Overlapping Topics'];
+  const headers = ['Post A Title', 'Post A URL', 'Post B Title', 'Post B URL', 'Similarity Score'];
   const rows = currentData.map(p => [
     `"${p.titleA.replace(/"/g, '""')}"`,
     p.urlA,
     `"${p.titleB.replace(/"/g, '""')}"`,
     p.urlB,
-    p.tfidfScore,
-    p.geminiScore ?? '',
-    p.recommendation,
-    `"${(p.overlappingTopics || []).join('; ').replace(/"/g, '""')}"`
+    p.tfidfScore
   ]);
 
   const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');

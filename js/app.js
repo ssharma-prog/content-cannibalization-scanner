@@ -3,7 +3,6 @@
 import { discoverSitemap, setExcludeSlugs } from './sitemap.js';
 import { extractPosts } from './extractor.js';
 import { computeAllPairs } from './tfidf.js';
-import { setApiKey, clearApiKey, hasApiKey, analyzeWithGemini } from './gemini.js';
 import { renderHeatmap } from './heatmap.js';
 import { renderTable, scrollToPair, exportCsv, filterTable } from './table.js';
 
@@ -29,11 +28,6 @@ const tableContainer = document.getElementById('table-container');
 const thresholdSlider = document.getElementById('threshold');
 const thresholdVal = document.getElementById('threshold-val');
 const exportBtn = document.getElementById('export-csv');
-const geminiKeyInput = document.getElementById('gemini-key');
-const geminiSetBtn = document.getElementById('gemini-set');
-const geminiClearBtn = document.getElementById('gemini-clear');
-const geminiStatus = document.getElementById('gemini-status');
-const geminiRunBtn = document.getElementById('gemini-run');
 const resultsSection = document.getElementById('results');
 const statsEl = document.getElementById('stats');
 
@@ -155,65 +149,6 @@ thresholdSlider.addEventListener('input', () => {
 
 // Export CSV
 exportBtn.addEventListener('click', exportCsv);
-
-// Gemini key management
-geminiSetBtn.addEventListener('click', () => {
-  const key = geminiKeyInput.value.trim();
-  if (!key) return;
-  setApiKey(key);
-  geminiKeyInput.value = '';
-  geminiStatus.textContent = 'Key set (memory only)';
-  geminiStatus.className = 'gemini-status active';
-  geminiRunBtn.disabled = false;
-  geminiClearBtn.style.display = 'inline-block';
-});
-
-geminiClearBtn.addEventListener('click', () => {
-  clearApiKey();
-  geminiStatus.textContent = 'No key set';
-  geminiStatus.className = 'gemini-status';
-  geminiRunBtn.disabled = true;
-  geminiClearBtn.style.display = 'none';
-});
-
-geminiRunBtn.addEventListener('click', async () => {
-  if (!hasApiKey()) { setStatus('Set a Gemini API key first', 'error'); return; }
-  if (pairs.length === 0) { setStatus('Run a scan first', 'error'); return; }
-
-  const topPairs = pairs.filter(p => p.tfidfScore >= 0.3).slice(0, 20);
-  if (topPairs.length === 0) {
-    setStatus('No pairs above 0.3 threshold to analyze with Gemini', 'warning');
-    return;
-  }
-
-  // Attach text snippets for Gemini
-  const postsMap = new Map(posts.map(p => [p.url, p]));
-  const pairsWithText = topPairs.map(p => ({
-    ...p,
-    textA: postsMap.get(p.urlA)?.text?.slice(0, 2000) || '',
-    textB: postsMap.get(p.urlB)?.text?.slice(0, 2000) || ''
-  }));
-
-  geminiRunBtn.disabled = true;
-  setStatus(`Analyzing ${pairsWithText.length} pairs with Gemini...`);
-
-  try {
-    const geminiResults = await analyzeWithGemini(pairsWithText);
-    setStatus(`Gemini analysis complete for ${geminiResults.length} pairs`, 'success');
-    const threshold = parseFloat(thresholdSlider.value);
-    renderTable(tableContainer, pairs.filter(p => p.tfidfScore >= threshold), geminiResults);
-  } catch (err) {
-    setStatus(`Gemini error: ${err.message}`, 'error');
-    if (!hasApiKey()) {
-      geminiStatus.textContent = 'Key cleared (invalid)';
-      geminiStatus.className = 'gemini-status';
-      geminiRunBtn.disabled = true;
-      geminiClearBtn.style.display = 'none';
-    }
-  }
-
-  geminiRunBtn.disabled = !hasApiKey();
-});
 
 // Enter key on URL input
 urlInput.addEventListener('keydown', (e) => {

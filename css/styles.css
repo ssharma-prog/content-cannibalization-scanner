@@ -319,39 +319,6 @@ input[type="range"] {
   100% { background: transparent; }
 }
 
-/* Recommendation badges */
-.rec-merge {
-  color: var(--danger);
-  font-weight: 600;
-}
-
-.rec-diff {
-  color: var(--warning);
-  font-weight: 600;
-}
-
-.rec-keep {
-  color: var(--success);
-  font-weight: 600;
-}
-
-/* Gemini section */
-.gemini-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.gemini-status {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.gemini-status.active {
-  color: var(--success);
-}
-
 /* Controls row */
 .controls-row {
   display: flex;
@@ -374,5 +341,4 @@ input[type="range"] {
   h1 { font-size: 1.4rem; }
   .input-row { flex-direction: column; }
   input[type="url"], input[type="text"] { min-width: 100%; }
-  input[type="password"] { width: 100%; }
 }
