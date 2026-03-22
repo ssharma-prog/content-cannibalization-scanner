@@ -11,7 +11,7 @@ const BLOG_EXCLUDE = [
   '/attachment/', '/embed/'
 ];
 
-const NON_POST_SLUGS = new Set([
+const DEFAULT_EXCLUDE_SLUGS = new Set([
   'about', 'about-us', 'contact', 'contact-us', 'privacy', 'privacy-policy',
   'terms', 'terms-of-service', 'terms-and-conditions', 'cookie-policy',
   'disclaimer', 'sitemap', 'search', 'login', 'register', 'signup',
@@ -21,21 +21,34 @@ const NON_POST_SLUGS = new Set([
   'subscribe', 'unsubscribe', 'confirmation', 'opt-in'
 ]);
 
+let customExcludeSlugs = new Set();
+
+function setCustomExcludeSlugs(slugs) {
+  customExcludeSlugs = new Set(
+    slugs.map(s => s.trim().toLowerCase().replace(/^\/|\/$/g, '')).filter(Boolean)
+  );
+}
+
 function isBlogPost(url) {
   const path = new URL(url).pathname;
 
   // Exclude known non-post patterns
   if (BLOG_EXCLUDE.some(ex => path.includes(ex))) return false;
 
-  // Exclude known non-post slugs
+  // Exclude known non-post slugs + custom slugs
   const segments = path.split('/').filter(Boolean);
-  if (segments.length === 1 && NON_POST_SLUGS.has(segments[0].toLowerCase())) return false;
+  const slug = segments.length > 0 ? segments[segments.length - 1].toLowerCase() : '';
+  const fullPath = segments.join('/').toLowerCase();
 
-  // Include if matches blog patterns (date-based URLs, /blog/ prefix)
+  if (DEFAULT_EXCLUDE_SLUGS.has(slug) || customExcludeSlugs.has(slug) || customExcludeSlugs.has(fullPath)) {
+    return false;
+  }
+
+  // Include if matches blog patterns
   if (BLOG_INCLUDE.some(inc => typeof inc === 'string' ? path.includes(inc) : inc.test(path))) return true;
 
-  // Fallback: require 2+ path segments to avoid top-level pages
-  return segments.length >= 2 && !path.endsWith('.xml');
+  // Fallback: accept 1+ segments (original behavior)
+  return segments.length >= 1 && !path.endsWith('.xml');
 }
 
 function parseUrlsFromXml(xmlText) {
@@ -43,13 +56,11 @@ function parseUrlsFromXml(xmlText) {
   const doc = parser.parseFromString(xmlText, 'text/xml');
   const urls = [];
 
-  // Check for sitemap index
   const sitemaps = doc.querySelectorAll('sitemap > loc');
   if (sitemaps.length > 0) {
     return { type: 'index', urls: Array.from(sitemaps).map(el => el.textContent.trim()) };
   }
 
-  // Regular sitemap
   const locs = doc.querySelectorAll('url > loc');
   locs.forEach(el => urls.push(el.textContent.trim()));
   return { type: 'urlset', urls };
@@ -76,7 +87,6 @@ async function discoverSitemap(siteUrl, onStatus, signal) {
 
   let allUrls = [];
 
-  // Try each candidate
   for (const candidate of candidates) {
     if (signal?.aborted) throw new Error('Cancelled');
     onStatus?.(`Trying ${candidate}...`);
@@ -102,7 +112,6 @@ async function discoverSitemap(siteUrl, onStatus, signal) {
     } catch (e) { if (e.message === 'Cancelled') throw e; }
   }
 
-  // Fallback: check robots.txt
   if (allUrls.length === 0) {
     if (signal?.aborted) throw new Error('Cancelled');
     onStatus?.('Checking robots.txt for sitemap directives...');
@@ -136,13 +145,11 @@ async function discoverSitemap(siteUrl, onStatus, signal) {
     throw new Error('No sitemap found. Tried standard paths and robots.txt.');
   }
 
-  // Normalize and deduplicate
   allUrls = [...new Set(allUrls.map(normalizeUrl))];
 
-  // Filter to blog posts
   const blogUrls = allUrls.filter(isBlogPost);
 
   return blogUrls.length > 0 ? blogUrls : allUrls;
 }
 
-export { discoverSitemap };
+export { discoverSitemap, setCustomExcludeSlugs };

@@ -5,9 +5,9 @@ import { escapeHtml, shortenTitle } from './utils.js';
 let currentData = [];
 let sortCol = 'tfidfScore';
 let sortDir = -1; // -1 = desc
+let highlightedRow = null;
 
 function renderTable(container, pairs, geminiResults) {
-  // Merge Gemini results if available
   const geminiMap = new Map();
   if (geminiResults) {
     for (const r of geminiResults) {
@@ -113,14 +113,29 @@ function sortAndRender(container) {
   });
 }
 
-function scrollToPair(indexA, indexB) {
+function highlightPair(indexA, indexB) {
+  // Clear previous
+  clearHighlight();
+
   const row = document.getElementById(`pair-${indexA}-${indexB}`)
     || document.getElementById(`pair-${indexB}-${indexA}`);
   if (row) {
     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    row.classList.add('highlight');
-    setTimeout(() => row.classList.remove('highlight'), 2000);
+    row.classList.add('active-highlight');
+    highlightedRow = row;
   }
+}
+
+function clearHighlight() {
+  if (highlightedRow) {
+    highlightedRow.classList.remove('active-highlight');
+    highlightedRow = null;
+  }
+}
+
+// Kept for backwards compat but now highlightPair is preferred
+function scrollToPair(indexA, indexB) {
+  highlightPair(indexA, indexB);
 }
 
 function exportCsv() {
@@ -148,4 +163,4 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
-export { renderTable, scrollToPair, exportCsv };
+export { renderTable, scrollToPair, highlightPair, clearHighlight, exportCsv };

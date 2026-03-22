@@ -221,6 +221,37 @@ button.danger:hover:not(:disabled) {
   overflow-x: auto;
 }
 
+/* Heatmap custom tooltip */
+.heatmap-tooltip {
+  display: none;
+  position: absolute;
+  z-index: 1000;
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  max-width: 400px;
+  pointer-events: none;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+/* Tooltip tail (pointing down) */
+.heatmap-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid var(--accent);
+}
+
 /* Threshold slider */
 .slider-row {
   display: flex;
@@ -328,13 +359,11 @@ input[type="range"]:disabled {
   background: rgba(226, 216, 16, 0.12);
 }
 
-.results-table tr.highlight {
-  animation: flash 2s ease-out;
-}
-
-@keyframes flash {
-  0% { background: rgba(232, 144, 5, 0.3); }
-  100% { background: transparent; }
+/* Persistent highlight from heatmap click */
+.results-table tr.active-highlight {
+  background: rgba(232, 144, 5, 0.25) !important;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* Score badges */

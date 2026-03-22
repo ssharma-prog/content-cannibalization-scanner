@@ -1,11 +1,11 @@
 // Orchestrator: UI events, workflow coordination
 
-import { discoverSitemap } from './sitemap.js';
+import { discoverSitemap, setCustomExcludeSlugs } from './sitemap.js';
 import { extractPosts } from './extractor.js';
 import { computeAllPairs } from './tfidf.js';
 import { setApiKey, clearApiKey, hasApiKey, analyzeWithGemini } from './gemini.js';
 import { renderHeatmap, applyThreshold } from './heatmap.js';
-import { renderTable, scrollToPair, exportCsv } from './table.js';
+import { renderTable, scrollToPair, highlightPair, clearHighlight, exportCsv } from './table.js';
 
 // State
 let posts = [];
@@ -13,10 +13,12 @@ let pairs = [];
 let matrix = [];
 let labels = [];
 let scanController = null;
+let lastGeminiResults = null;
 
 // DOM refs
 const urlInput = document.getElementById('site-url');
 const maxPostsInput = document.getElementById('max-posts');
+const excludeSlugsInput = document.getElementById('exclude-slugs');
 const scanBtn = document.getElementById('scan-btn');
 const cancelBtn = document.getElementById('cancel-btn');
 const statusEl = document.getElementById('status');
@@ -65,10 +67,10 @@ function getVisiblePairs() {
   return pairs.filter(p => p.tfidfScore >= threshold);
 }
 
-function refreshResults(geminiResults) {
+function refreshResults() {
   const threshold = showAllCheckbox.checked ? 0 : parseFloat(thresholdSlider.value);
-  applyThreshold(heatmapContainer, matrix, labels, threshold, (i, j) => scrollToPair(i, j));
-  renderTable(tableContainer, getVisiblePairs(), geminiResults);
+  applyThreshold(heatmapContainer, matrix, labels, threshold, (i, j) => highlightPair(i, j));
+  renderTable(tableContainer, getVisiblePairs(), lastGeminiResults);
 }
 
 // Main scan workflow
@@ -77,6 +79,14 @@ scanBtn.addEventListener('click', async () => {
   if (!url) { setStatus('Enter a URL', 'error'); return; }
   if (!url.startsWith('http')) url = 'https://' + url;
 
+  // Parse custom exclude slugs
+  const excludeText = excludeSlugsInput.value.trim();
+  if (excludeText) {
+    setCustomExcludeSlugs(excludeText.split(','));
+  } else {
+    setCustomExcludeSlugs([]);
+  }
+
   const maxPosts = parseInt(maxPostsInput.value) || 200;
   scanController = new AbortController();
   const signal = scanController.signal;
@@ -84,6 +94,7 @@ scanBtn.addEventListener('click', async () => {
   resultsSection.style.display = 'none';
   posts = [];
   pairs = [];
+  lastGeminiResults = null;
 
   try {
     // Step 1: Discover sitemap
@@ -139,7 +150,7 @@ scanBtn.addEventListener('click', async () => {
     `;
 
     renderHeatmap(heatmapContainer, matrix, labels, (i, j) => {
-      scrollToPair(i, j);
+      highlightPair(i, j);
     });
 
     refreshResults();
@@ -180,6 +191,13 @@ showAllCheckbox.addEventListener('change', () => {
 // Export CSV
 exportBtn.addEventListener('click', exportCsv);
 
+// Clear table highlight on click outside (except links)
+document.addEventListener('click', (e) => {
+  if (e.target.closest('a')) return; // don't clear if clicking a link
+  if (e.target.closest('#heatmap')) return; // don't clear if clicking heatmap
+  clearHighlight();
+});
+
 // Gemini key management
 geminiSetBtn.addEventListener('click', () => {
   const key = geminiKeyInput.value.trim();
@@ -210,7 +228,6 @@ geminiRunBtn.addEventListener('click', async () => {
     return;
   }
 
-  // Attach text snippets for Gemini
   const postsMap = new Map(posts.map(p => [p.url, p]));
   const pairsWithText = topPairs.map(p => ({
     ...p,
@@ -222,9 +239,9 @@ geminiRunBtn.addEventListener('click', async () => {
   setStatus(`Analyzing ${pairsWithText.length} pairs with Gemini...`);
 
   try {
-    const geminiResults = await analyzeWithGemini(pairsWithText);
-    setStatus(`Gemini analysis complete for ${geminiResults.length} pairs`, 'success');
-    refreshResults(geminiResults);
+    lastGeminiResults = await analyzeWithGemini(pairsWithText);
+    setStatus(`Gemini analysis complete for ${lastGeminiResults.length} pairs`, 'success');
+    refreshResults();
   } catch (err) {
     setStatus(`Gemini error: ${err.message}`, 'error');
     if (!hasApiKey()) {
