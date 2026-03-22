@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Cannibalization Scanner</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.plot.ly; style-src 'self' 'unsafe-inline'; connect-src https://corsproxy.io https://api.allorigins.win https://generativelanguage.googleapis.com; img-src 'self' data:;">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Content Cannibalization Scanner</h1>
+    <p class="subtitle">Find overlapping blog posts that compete for the same search queries</p>
+
+    <!-- Scan Input -->
+    <div class="card">
+      <h2>Scan Website</h2>
+      <div class="input-row">
+        <input type="url" id="site-url" placeholder="https://example.com" autocomplete="url">
+        <label for="max-posts">Max posts:</label>
+        <input type="number" id="max-posts" value="200" min="2" max="1000">
+        <button id="scan-btn">Scan</button>
+      </div>
+      <div id="status" class="status info"></div>
+      <div id="progress-bar" class="progress-bar">
+        <div id="progress-fill" class="progress-fill"></div>
+        <span id="progress-text" class="progress-text"></span>
+      </div>
+    </div>
+
+    <!-- Gemini (Optional) -->
+    <div class="card">
+      <h2>Gemini AI Analysis (Optional)</h2>
+      <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px;">
+        API key is held in memory only — never stored or sent through proxies.
+      </p>
+      <div class="gemini-row">
+        <input type="password" id="gemini-key" placeholder="Gemini API key" autocomplete="off">
+        <button id="gemini-set" class="secondary">Set Key</button>
+        <button id="gemini-clear" class="danger" style="display:none">Clear Key</button>
+        <span id="gemini-status" class="gemini-status">No key set</span>
+      </div>
+      <div style="margin-top: 10px;">
+        <button id="gemini-run" class="secondary" disabled>Run Gemini Analysis on Top Pairs</button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results" style="display:none">
+      <div class="card">
+        <h2>Results</h2>
+        <div id="stats" class="stats"></div>
+
+        <!-- Heatmap -->
+        <div id="heatmap"></div>
+
+        <!-- Controls -->
+        <div class="controls-row">
+          <div class="slider-row">
+            <label>Threshold:</label>
+            <input type="range" id="threshold" min="0" max="1" step="0.05" value="0.1">
+            <span id="threshold-val" class="threshold-val">0.10</span>
+          </div>
+          <button id="export-csv" class="secondary">Export CSV</button>
+        </div>
+
+        <!-- Table -->
+        <div id="table-container" class="table-wrapper"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
