@@ -328,6 +328,22 @@ input[type="range"] {
   margin: 12px 0;
 }
 
+/* N-gram status */
+.ngram-status {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Shared phrases column */
+.results-table td.phrases {
+  max-width: 250px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Table wrapper */
 .table-wrapper {
   overflow-x: auto;

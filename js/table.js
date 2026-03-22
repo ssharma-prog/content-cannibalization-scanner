@@ -5,9 +5,34 @@ import { escapeHtml, shortenTitle } from './utils.js';
 let currentData = [];
 let sortCol = 'tfidfScore';
 let sortDir = -1; // -1 = desc
+let hasNgramData = false;
 
-function renderTable(container, pairs) {
-  currentData = pairs.map(p => ({ ...p }));
+function renderTable(container, pairs, ngramResults) {
+  // Merge n-gram results if available
+  if (ngramResults) {
+    hasNgramData = true;
+    const ngramMap = new Map();
+    for (const r of ngramResults) {
+      ngramMap.set(`${r.urlA}|${r.urlB}`, r);
+    }
+    currentData = pairs.map(p => {
+      const key = `${p.urlA}|${p.urlB}`;
+      const n = ngramMap.get(key);
+      return {
+        ...p,
+        phraseScore: n?.phraseScore ?? null,
+        sharedPhrases: n?.sharedPhrases ?? []
+      };
+    });
+  } else {
+    currentData = pairs.map(p => ({
+      ...p,
+      phraseScore: p.phraseScore ?? null,
+      sharedPhrases: p.sharedPhrases ?? []
+    }));
+    if (currentData.some(p => p.phraseScore !== null)) hasNgramData = true;
+  }
+
   sortAndRender(container);
 }
 
@@ -24,7 +49,20 @@ function sortAndRender(container) {
 
   const arrow = (col) => {
     if (sortCol !== col) return '';
-    return sortDir === -1 ? ' ▼' : ' ▲';
+    return sortDir === -1 ? ' \u25BC' : ' \u25B2';
+  };
+
+  const phraseHeader = hasNgramData
+    ? `<th data-col="phraseScore" class="sortable num">Phrase Overlap${arrow('phraseScore')}</th><th>Shared Phrases</th>`
+    : '';
+
+  const phraseCell = (p) => {
+    if (!hasNgramData) return '';
+    const score = p.phraseScore !== null ? p.phraseScore.toFixed(3) : '\u2014';
+    const phrases = (p.sharedPhrases || []).slice(0, 3).map(ph => escapeHtml(ph)).join(', ');
+    const count = (p.sharedPhrases || []).length;
+    const more = count > 3 ? ` (+${count - 3} more)` : '';
+    return `<td class="num">${score}</td><td class="phrases" title="${escapeHtml((p.sharedPhrases || []).join('; '))}">${phrases}${more}</td>`;
   };
 
   container.innerHTML = `
@@ -34,6 +72,7 @@ function sortAndRender(container) {
           <th data-col="titleA" class="sortable">Post A${arrow('titleA')}</th>
           <th data-col="titleB" class="sortable">Post B${arrow('titleB')}</th>
           <th data-col="tfidfScore" class="sortable num">Similarity Score${arrow('tfidfScore')}</th>
+          ${phraseHeader}
         </tr>
       </thead>
       <tbody>
@@ -42,6 +81,7 @@ function sortAndRender(container) {
             <td><a href="${escapeHtml(p.urlA)}" target="_blank" rel="noopener" title="${escapeHtml(p.titleA)}">${escapeHtml(shortenTitle(p.titleA, 60))}</a></td>
             <td><a href="${escapeHtml(p.urlB)}" target="_blank" rel="noopener" title="${escapeHtml(p.titleB)}">${escapeHtml(shortenTitle(p.titleB, 60))}</a></td>
             <td class="num">${p.tfidfScore.toFixed(3)}</td>
+            ${phraseCell(p)}
           </tr>
         `).join('')}
       </tbody>
@@ -78,13 +118,22 @@ function exportCsv() {
   if (currentData.length === 0) return;
 
   const headers = ['Post A Title', 'Post A URL', 'Post B Title', 'Post B URL', 'Similarity Score'];
-  const rows = currentData.map(p => [
-    `"${p.titleA.replace(/"/g, '""')}"`,
-    p.urlA,
-    `"${p.titleB.replace(/"/g, '""')}"`,
-    p.urlB,
-    p.tfidfScore
-  ]);
+  if (hasNgramData) headers.push('Phrase Overlap', 'Shared Phrases');
+
+  const rows = currentData.map(p => {
+    const row = [
+      `"${p.titleA.replace(/"/g, '""')}"`,
+      p.urlA,
+      `"${p.titleB.replace(/"/g, '""')}"`,
+      p.urlB,
+      p.tfidfScore
+    ];
+    if (hasNgramData) {
+      row.push(p.phraseScore ?? '');
+      row.push(`"${(p.sharedPhrases || []).join('; ').replace(/"/g, '""')}"`);
+    }
+    return row;
+  });
 
   const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -108,4 +157,8 @@ function filterTable(container, threshold) {
   });
 }
 
-export { renderTable, scrollToPair, exportCsv, filterTable };
+function resetNgramData() {
+  hasNgramData = false;
+}
+
+export { renderTable, scrollToPair, exportCsv, filterTable, resetNgramData };

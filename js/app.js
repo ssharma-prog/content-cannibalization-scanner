@@ -4,7 +4,7 @@ import { discoverSitemap, setExcludeSlugs } from './sitemap.js';
 import { extractPosts } from './extractor.js';
 import { computeAllPairs } from './tfidf.js';
 import { renderHeatmap } from './heatmap.js';
-import { renderTable, scrollToPair, exportCsv, filterTable } from './table.js';
+import { renderTable, scrollToPair, exportCsv, filterTable, resetNgramData } from './table.js';
 
 // State
 let posts = [];
@@ -12,6 +12,8 @@ let pairs = [];
 let matrix = [];
 let labels = [];
 let scanController = null;
+let ngramResults = null;
+let ngramWorker = null;
 
 // DOM refs
 const urlInput = document.getElementById('site-url');
@@ -28,6 +30,9 @@ const tableContainer = document.getElementById('table-container');
 const thresholdSlider = document.getElementById('threshold');
 const thresholdVal = document.getElementById('threshold-val');
 const exportBtn = document.getElementById('export-csv');
+const ngramBtn = document.getElementById('ngram-btn');
+const ngramTopInput = document.getElementById('ngram-top');
+const ngramStatusEl = document.getElementById('ngram-status');
 const resultsSection = document.getElementById('results');
 const statsEl = document.getElementById('stats');
 
@@ -45,6 +50,20 @@ function showProgress(current, total, label) {
 
 function hideProgress() {
   progressBar.style.display = 'none';
+}
+
+function getVisiblePairs() {
+  const threshold = parseFloat(thresholdSlider.value);
+  return pairs.filter(p => p.tfidfScore >= threshold);
+}
+
+// Debounce helper
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
 }
 
 // Main scan workflow
@@ -65,6 +84,8 @@ scanBtn.addEventListener('click', async () => {
   resultsSection.style.display = 'none';
   posts = [];
   pairs = [];
+  ngramResults = null;
+  resetNgramData();
 
   try {
     // Step 1: Discover sitemap
@@ -109,6 +130,7 @@ scanBtn.addEventListener('click', async () => {
 
     // Step 4: Show results
     resultsSection.style.display = 'block';
+    ngramBtn.disabled = false;
     statsEl.innerHTML = `
       <strong>${posts.length}</strong> posts analyzed |
       <strong>${pairs.length}</strong> pairs |
@@ -118,8 +140,7 @@ scanBtn.addEventListener('click', async () => {
     `;
 
     renderHeatmap(heatmapContainer, matrix);
-
-    renderTable(tableContainer, pairs.filter(p => p.tfidfScore >= parseFloat(thresholdSlider.value)));
+    renderTable(tableContainer, getVisiblePairs());
 
   } catch (err) {
     hideProgress();
@@ -140,15 +161,63 @@ cancelBtn.addEventListener('click', () => {
   scanController?.abort();
 });
 
-// Threshold slider
+// Threshold slider — debounced to prevent Chrome freeze
+const debouncedRender = debounce(() => {
+  renderTable(tableContainer, getVisiblePairs(), ngramResults);
+}, 200);
+
 thresholdSlider.addEventListener('input', () => {
   const val = parseFloat(thresholdSlider.value);
   thresholdVal.textContent = val.toFixed(2);
-  renderTable(tableContainer, pairs.filter(p => p.tfidfScore >= val));
+  debouncedRender();
 });
 
 // Export CSV
 exportBtn.addEventListener('click', exportCsv);
+
+// N-gram phrase overlap analysis
+ngramBtn.addEventListener('click', () => {
+  if (pairs.length === 0) return;
+
+  const topN = parseInt(ngramTopInput.value) || 20;
+  const topPairs = pairs.slice(0, topN); // pairs already sorted by tfidfScore desc
+
+  ngramBtn.disabled = true;
+  ngramStatusEl.textContent = 'Analyzing...';
+
+  // Kill previous worker if running
+  if (ngramWorker) ngramWorker.terminate();
+
+  ngramWorker = new Worker('js/ngram-worker.js');
+
+  ngramWorker.onmessage = (e) => {
+    const msg = e.data;
+    if (msg.type === 'progress') {
+      ngramStatusEl.textContent = `Analyzing ${msg.current} / ${msg.total} pairs...`;
+    } else if (msg.type === 'done') {
+      ngramResults = msg.results;
+      ngramStatusEl.textContent = `Done! ${msg.results.length} pairs analyzed.`;
+      ngramBtn.disabled = false;
+      ngramWorker.terminate();
+      ngramWorker = null;
+
+      // Re-render table with n-gram data
+      renderTable(tableContainer, getVisiblePairs(), ngramResults);
+    }
+  };
+
+  ngramWorker.onerror = (err) => {
+    ngramStatusEl.textContent = `Error: ${err.message}`;
+    ngramBtn.disabled = false;
+    ngramWorker.terminate();
+    ngramWorker = null;
+  };
+
+  ngramWorker.postMessage({
+    pairs: topPairs.map(p => ({ urlA: p.urlA, urlB: p.urlB })),
+    posts: posts.map(p => ({ url: p.url, text: p.text }))
+  });
+});
 
 // Enter key on URL input
 urlInput.addEventListener('keydown', (e) => {
