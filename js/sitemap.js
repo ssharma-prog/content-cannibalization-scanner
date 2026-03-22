@@ -43,7 +43,7 @@ function parseSitemapsFromRobots(robotsText, baseUrl) {
   return sitemaps;
 }
 
-async function discoverSitemap(siteUrl, onStatus) {
+async function discoverSitemap(siteUrl, onStatus, signal) {
   const base = getBaseUrl(siteUrl);
   const candidates = [
     `${base}/sitemap.xml`,
@@ -59,14 +59,14 @@ async function discoverSitemap(siteUrl, onStatus) {
   for (const candidate of candidates) {
     onStatus?.(`Trying ${candidate}...`);
     try {
-      const xml = await fetchViaProxy(candidate);
+      const xml = await fetchViaProxy(candidate, { signal });
       const result = parseUrlsFromXml(xml);
       if (result.type === 'index') {
         // Follow sub-sitemaps
         for (const subUrl of result.urls) {
           onStatus?.(`Following sub-sitemap: ${subUrl}`);
           try {
-            const subXml = await fetchViaProxy(subUrl);
+            const subXml = await fetchViaProxy(subUrl, { signal });
             const subResult = parseUrlsFromXml(subXml);
             if (subResult.type === 'urlset') {
               allUrls.push(...subResult.urls);
@@ -84,7 +84,7 @@ async function discoverSitemap(siteUrl, onStatus) {
   if (allUrls.length === 0) {
     onStatus?.('Checking robots.txt for sitemap directives...');
     try {
-      const robots = await fetchViaProxy(`${base}/robots.txt`);
+      const robots = await fetchViaProxy(`${base}/robots.txt`, { signal });
       const sitemapUrls = parseSitemapsFromRobots(robots, base);
       for (const smUrl of sitemapUrls) {
         onStatus?.(`Found in robots.txt: ${smUrl}`);
@@ -94,7 +94,7 @@ async function discoverSitemap(siteUrl, onStatus) {
           if (result.type === 'index') {
             for (const subUrl of result.urls) {
               try {
-                const subXml = await fetchViaProxy(subUrl);
+                const subXml = await fetchViaProxy(subUrl, { signal });
                 const subResult = parseUrlsFromXml(subXml);
                 if (subResult.type === 'urlset') allUrls.push(...subResult.urls);
               } catch { /* skip */ }

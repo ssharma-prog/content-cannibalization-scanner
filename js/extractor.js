@@ -54,16 +54,17 @@ function extractFromHtml(html, url) {
   };
 }
 
-async function extractPosts(urls, onProgress) {
+async function extractPosts(urls, onProgress, signal) {
   const results = [];
   const failures = [];
   const batchSize = 5;
 
   for (let i = 0; i < urls.length; i += batchSize) {
+    if (signal?.aborted) throw new Error('Cancelled');
     const batch = urls.slice(i, i + batchSize);
     const promises = batch.map(async (url) => {
       try {
-        const html = await fetchViaProxy(url);
+        const html = await fetchViaProxy(url, { signal });
         const extracted = extractFromHtml(html, url);
         if (extracted.text.length < 50) {
           failures.push({ url, reason: 'Too little content' });
@@ -71,6 +72,7 @@ async function extractPosts(urls, onProgress) {
         }
         return extracted;
       } catch (err) {
+        if (err.message === 'Cancelled') throw err;
         failures.push({ url, reason: err.message });
         return null;
       }

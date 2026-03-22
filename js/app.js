@@ -12,11 +12,13 @@ let posts = [];
 let pairs = [];
 let matrix = [];
 let labels = [];
+let scanController = null;
 
 // DOM refs
 const urlInput = document.getElementById('site-url');
 const maxPostsInput = document.getElementById('max-posts');
 const scanBtn = document.getElementById('scan-btn');
+const cancelBtn = document.getElementById('cancel-btn');
 const statusEl = document.getElementById('status');
 const progressBar = document.getElementById('progress-bar');
 const progressFill = document.getElementById('progress-fill');
@@ -57,7 +59,10 @@ scanBtn.addEventListener('click', async () => {
   if (!url.startsWith('http')) url = 'https://' + url;
 
   const maxPosts = parseInt(maxPostsInput.value) || 200;
-  scanBtn.disabled = true;
+  scanController = new AbortController();
+  const signal = scanController.signal;
+  scanBtn.style.display = 'none';
+  cancelBtn.style.display = '';
   resultsSection.style.display = 'none';
   posts = [];
   pairs = [];
@@ -65,7 +70,7 @@ scanBtn.addEventListener('click', async () => {
   try {
     // Step 1: Discover sitemap
     setStatus('Discovering sitemap...');
-    const urls = await discoverSitemap(url, (msg) => setStatus(msg));
+    const urls = await discoverSitemap(url, (msg) => setStatus(msg), signal);
     setStatus(`Found ${urls.length} URLs in sitemap`);
 
     if (urls.length > maxPosts) {
@@ -78,13 +83,15 @@ scanBtn.addEventListener('click', async () => {
     showProgress(0, targetUrls.length, 'Extracting...');
     const { posts: extracted, failures } = await extractPosts(targetUrls, (current, total) => {
       showProgress(current, total, `Extracted ${current} / ${total} posts`);
-    });
+    }, signal);
     posts = extracted;
     hideProgress();
 
     if (posts.length < 2) {
       setStatus('Need at least 2 posts to compare. Check if the site is accessible.', 'error');
-      scanBtn.disabled = false;
+      scanBtn.style.display = '';
+      cancelBtn.style.display = 'none';
+      scanController = null;
       return;
     }
 
@@ -118,11 +125,22 @@ scanBtn.addEventListener('click', async () => {
     renderTable(tableContainer, pairs.filter(p => p.tfidfScore >= parseFloat(thresholdSlider.value)));
 
   } catch (err) {
-    setStatus(`Error: ${err.message}`, 'error');
     hideProgress();
+    if (err.message === 'Cancelled') {
+      setStatus('Scan cancelled.', 'warning');
+    } else {
+      setStatus(`Error: ${err.message}`, 'error');
+    }
   }
 
-  scanBtn.disabled = false;
+  scanBtn.style.display = '';
+  cancelBtn.style.display = 'none';
+  scanController = null;
+});
+
+// Cancel
+cancelBtn.addEventListener('click', () => {
+  scanController?.abort();
 });
 
 // Threshold slider
