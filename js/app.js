@@ -175,48 +175,97 @@ thresholdSlider.addEventListener('input', () => {
 // Export CSV
 exportBtn.addEventListener('click', exportCsv);
 
-// N-gram phrase overlap analysis
+// N-gram phrase overlap analysis — inline fallback if Worker fails
+function getNgrams(text, n) {
+  const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 1);
+  const ngrams = new Set();
+  for (let i = 0; i <= words.length - n; i++) {
+    ngrams.add(words.slice(i, i + n).join(' '));
+  }
+  return ngrams;
+}
+
+function computePhraseOverlap(textA, textB) {
+  const ngramsA = getNgrams(textA, 5);
+  const ngramsB = getNgrams(textB, 5);
+  if (ngramsA.size === 0 || ngramsB.size === 0) return { score: 0, sharedPhrases: [] };
+  const shared = [];
+  for (const phrase of ngramsA) {
+    if (ngramsB.has(phrase)) shared.push(phrase);
+  }
+  const avgSize = (ngramsA.size + ngramsB.size) / 2;
+  const score = Math.round((shared.length / avgSize) * 1000) / 1000;
+  shared.sort((a, b) => b.length - a.length);
+  return { score, sharedPhrases: shared.slice(0, 10) };
+}
+
+function runNgramInline(topPairs, postsData) {
+  const postsMap = {};
+  for (const p of postsData) postsMap[p.url] = p.text;
+  const results = [];
+  for (const pair of topPairs) {
+    const textA = postsMap[pair.urlA] || '';
+    const textB = postsMap[pair.urlB] || '';
+    const { score, sharedPhrases } = computePhraseOverlap(textA, textB);
+    results.push({ urlA: pair.urlA, urlB: pair.urlB, phraseScore: score, sharedPhrases });
+  }
+  return results;
+}
+
 ngramBtn.addEventListener('click', () => {
   if (pairs.length === 0) return;
 
   const topN = parseInt(ngramTopInput.value) || 20;
-  const topPairs = pairs.slice(0, topN); // pairs already sorted by tfidfScore desc
+  const topPairs = pairs.slice(0, topN);
+  const pairData = topPairs.map(p => ({ urlA: p.urlA, urlB: p.urlB }));
+  const postData = posts.map(p => ({ url: p.url, text: p.text }));
 
   ngramBtn.disabled = true;
   ngramStatusEl.textContent = 'Analyzing...';
 
-  // Kill previous worker if running
-  if (ngramWorker) ngramWorker.terminate();
+  // Try Web Worker first, fall back to main thread
+  try {
+    if (ngramWorker) ngramWorker.terminate();
+    ngramWorker = new Worker('js/ngram-worker.js');
 
-  ngramWorker = new Worker('js/ngram-worker.js');
+    ngramWorker.onmessage = (e) => {
+      const msg = e.data;
+      if (msg.type === 'progress') {
+        ngramStatusEl.textContent = `Analyzing ${msg.current} / ${msg.total} pairs...`;
+      } else if (msg.type === 'done') {
+        ngramResults = msg.results;
+        ngramStatusEl.textContent = `Done! ${msg.results.length} pairs analyzed.`;
+        ngramBtn.disabled = false;
+        ngramWorker.terminate();
+        ngramWorker = null;
+        renderTable(tableContainer, getVisiblePairs(), ngramResults);
+      }
+    };
 
-  ngramWorker.onmessage = (e) => {
-    const msg = e.data;
-    if (msg.type === 'progress') {
-      ngramStatusEl.textContent = `Analyzing ${msg.current} / ${msg.total} pairs...`;
-    } else if (msg.type === 'done') {
-      ngramResults = msg.results;
-      ngramStatusEl.textContent = `Done! ${msg.results.length} pairs analyzed.`;
-      ngramBtn.disabled = false;
+    ngramWorker.onerror = () => {
+      // Worker failed — run inline instead
       ngramWorker.terminate();
       ngramWorker = null;
+      ngramStatusEl.textContent = 'Running analysis...';
+      setTimeout(() => {
+        ngramResults = runNgramInline(pairData, postData);
+        ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs analyzed.`;
+        ngramBtn.disabled = false;
+        renderTable(tableContainer, getVisiblePairs(), ngramResults);
+      }, 10);
+    };
 
-      // Re-render table with n-gram data
+    ngramWorker.postMessage({ pairs: pairData, posts: postData });
+  } catch {
+    // Worker creation failed — run inline
+    ngramStatusEl.textContent = 'Running analysis...';
+    setTimeout(() => {
+      ngramResults = runNgramInline(pairData, postData);
+      ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs analyzed.`;
+      ngramBtn.disabled = false;
       renderTable(tableContainer, getVisiblePairs(), ngramResults);
-    }
-  };
-
-  ngramWorker.onerror = (err) => {
-    ngramStatusEl.textContent = `Error: ${err.message}`;
-    ngramBtn.disabled = false;
-    ngramWorker.terminate();
-    ngramWorker = null;
-  };
-
-  ngramWorker.postMessage({
-    pairs: topPairs.map(p => ({ urlA: p.urlA, urlB: p.urlB })),
-    posts: posts.map(p => ({ url: p.url, text: p.text }))
-  });
+    }, 10);
+  }
 });
 
 // Enter key on URL input
