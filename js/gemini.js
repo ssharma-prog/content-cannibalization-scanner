@@ -26,7 +26,7 @@ async function analyzeWithGemini(pairs) {
 
     try {
       const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -45,11 +45,16 @@ async function analyzeWithGemini(pairs) {
         throw new Error('Invalid Gemini API key. Key has been cleared.');
       }
 
-      if (!resp.ok) throw new Error(`Gemini API error: ${resp.status}`);
+      if (!resp.ok) {
+        const errBody = await resp.text().catch(() => '');
+        throw new Error(`Gemini API ${resp.status}: ${errBody.slice(0, 200)}`);
+      }
 
       const data = await resp.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
+      if (!text) {
+        batch.forEach(p => results.push({ ...p, geminiScore: null, recommendation: 'no_response' }));
+      } else {
         try {
           const parsed = JSON.parse(text);
           const analyses = Array.isArray(parsed) ? parsed : parsed.analyses || [parsed];
@@ -68,7 +73,8 @@ async function analyzeWithGemini(pairs) {
       }
     } catch (err) {
       if (err.message.includes('Invalid Gemini API key')) throw err;
-      batch.forEach(p => results.push({ ...p, geminiScore: null, recommendation: 'error' }));
+      // Surface the actual error so the user sees what went wrong
+      throw new Error(err.message);
     }
   }
 
