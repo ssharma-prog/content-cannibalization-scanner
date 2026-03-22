@@ -10,21 +10,36 @@ function getNgrams(text, n) {
   return ngrams;
 }
 
-function computePhraseOverlap(textA, textB) {
-  const ngramsA = getNgrams(textA, 5);
-  const ngramsB = getNgrams(textB, 5);
+function buildBoilerplateSet(posts) {
+  const phraseCounts = {};
+  for (const p of posts) {
+    const ngrams = getNgrams(p.text || '', 4);
+    for (const phrase of ngrams) {
+      phraseCounts[phrase] = (phraseCounts[phrase] || 0) + 1;
+    }
+  }
+  const threshold = Math.max(2, posts.length * 0.3);
+  const boilerplate = new Set();
+  for (const [phrase, count] of Object.entries(phraseCounts)) {
+    if (count >= threshold) boilerplate.add(phrase);
+  }
+  return boilerplate;
+}
+
+function computePhraseOverlap(textA, textB, boilerplate) {
+  const ngramsA = getNgrams(textA, 4);
+  const ngramsB = getNgrams(textB, 4);
 
   if (ngramsA.size === 0 || ngramsB.size === 0) return { score: 0, sharedPhrases: [] };
 
   const shared = [];
   for (const phrase of ngramsA) {
-    if (ngramsB.has(phrase)) shared.push(phrase);
+    if (ngramsB.has(phrase) && !boilerplate.has(phrase)) shared.push(phrase);
   }
 
   const avgSize = (ngramsA.size + ngramsB.size) / 2;
   const score = Math.round((shared.length / avgSize) * 1000) / 1000;
 
-  // Return top 10 shared phrases sorted by length (longer = more specific)
   shared.sort((a, b) => b.length - a.length);
 
   return { score, sharedPhrases: shared.slice(0, 10) };
@@ -37,12 +52,14 @@ self.onmessage = function(e) {
     postsMap[p.url] = p.text;
   }
 
+  const boilerplate = buildBoilerplateSet(posts);
+
   const results = [];
   for (let i = 0; i < pairs.length; i++) {
     const pair = pairs[i];
     const textA = postsMap[pair.urlA] || '';
     const textB = postsMap[pair.urlB] || '';
-    const { score, sharedPhrases } = computePhraseOverlap(textA, textB);
+    const { score, sharedPhrases } = computePhraseOverlap(textA, textB, boilerplate);
 
     results.push({
       urlA: pair.urlA,
@@ -51,7 +68,6 @@ self.onmessage = function(e) {
       sharedPhrases
     });
 
-    // Report progress every 5 pairs
     if ((i + 1) % 5 === 0 || i === pairs.length - 1) {
       self.postMessage({ type: 'progress', current: i + 1, total: pairs.length });
     }

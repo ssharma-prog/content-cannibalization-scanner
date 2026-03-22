@@ -7,7 +7,11 @@ const NOISE_SELECTORS = [
   '.sidebar', '.widget', '.comment', '.comments', '.menu', '.nav',
   '.breadcrumb', '.social-share', '.related-posts', '.author-bio',
   '#sidebar', '#comments', '#menu', '#nav', '.wp-block-comments',
-  '.sharedaddy', '.jp-relatedposts'
+  '.sharedaddy', '.jp-relatedposts',
+  '.share', '.social', '.sharing', '.addtoany', '.post-share',
+  '[class*="share"]', '[class*="social"]', '[class*="sharing"]',
+  '.author-box', '.post-author', '.entry-author', '.byline',
+  '.post-meta', '.entry-meta', '.post-tags', '.tag-links'
 ];
 
 const CONTENT_SELECTORS = [

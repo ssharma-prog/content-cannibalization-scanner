@@ -186,8 +186,8 @@ function getNgrams(text, n) {
 }
 
 function computePhraseOverlap(textA, textB) {
-  const ngramsA = getNgrams(textA, 5);
-  const ngramsB = getNgrams(textB, 5);
+  const ngramsA = getNgrams(textA, 4);
+  const ngramsB = getNgrams(textB, 4);
   if (ngramsA.size === 0 || ngramsB.size === 0) return { score: 0, sharedPhrases: [] };
   const shared = [];
   for (const phrase of ngramsA) {
@@ -199,20 +199,51 @@ function computePhraseOverlap(textA, textB) {
   return { score, sharedPhrases: shared.slice(0, 10) };
 }
 
+function buildBoilerplateSet(postsData) {
+  const phraseCounts = {};
+  for (const p of postsData) {
+    const ngrams = getNgrams(p.text || '', 4);
+    for (const phrase of ngrams) {
+      phraseCounts[phrase] = (phraseCounts[phrase] || 0) + 1;
+    }
+  }
+  const threshold = Math.max(2, postsData.length * 0.3);
+  const boilerplate = new Set();
+  for (const [phrase, count] of Object.entries(phraseCounts)) {
+    if (count >= threshold) boilerplate.add(phrase);
+  }
+  return boilerplate;
+}
+
+function computePhraseOverlapFiltered(textA, textB, boilerplate) {
+  const ngramsA = getNgrams(textA, 4);
+  const ngramsB = getNgrams(textB, 4);
+  if (ngramsA.size === 0 || ngramsB.size === 0) return { score: 0, sharedPhrases: [] };
+  const shared = [];
+  for (const phrase of ngramsA) {
+    if (ngramsB.has(phrase) && !boilerplate.has(phrase)) shared.push(phrase);
+  }
+  const avgSize = (ngramsA.size + ngramsB.size) / 2;
+  const score = Math.round((shared.length / avgSize) * 1000) / 1000;
+  shared.sort((a, b) => b.length - a.length);
+  return { score, sharedPhrases: shared.slice(0, 10) };
+}
+
 function runNgramInline(topPairs, postsData) {
   const postsMap = {};
   for (const p of postsData) postsMap[p.url] = p.text;
+  const boilerplate = buildBoilerplateSet(postsData);
   const results = [];
   let totalShared = 0;
   for (const pair of topPairs) {
     const textA = postsMap[pair.urlA] || '';
     const textB = postsMap[pair.urlB] || '';
-    const { score, sharedPhrases } = computePhraseOverlap(textA, textB);
+    const { score, sharedPhrases } = computePhraseOverlapFiltered(textA, textB, boilerplate);
     totalShared += sharedPhrases.length;
     results.push({ urlA: pair.urlA, urlB: pair.urlB, phraseScore: score, sharedPhrases });
   }
   results._totalShared = totalShared;
-  results._sampleTextLen = postsData.length > 0 ? (postsData[0].text || '').length : 0;
+  results._boilerplateCount = boilerplate.size;
   return results;
 }
 
@@ -254,8 +285,8 @@ ngramBtn.addEventListener('click', () => {
       setTimeout(() => {
         ngramResults = runNgramInline(pairData, postData);
         const ts = ngramResults._totalShared || 0;
-        const sl = ngramResults._sampleTextLen || 0;
-        ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs. ${ts} shared phrases found. First post: ${sl} chars.`;
+        const bp = ngramResults._boilerplateCount || 0;
+        ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs. ${ts} shared phrases found. ${bp} boilerplate phrases filtered.`;
         ngramBtn.disabled = false;
         renderTable(tableContainer, getVisiblePairs(), ngramResults);
       }, 10);
