@@ -115,6 +115,7 @@ button {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s, opacity 0.2s;
+  white-space: nowrap;
 }
 
 button:hover:not(:disabled) {
@@ -139,6 +140,10 @@ button.secondary:hover:not(:disabled) {
 button.danger {
   background: var(--danger);
   color: #fff;
+}
+
+button.danger:hover:not(:disabled) {
+  background: #ff5555;
 }
 
 /* Status */
@@ -194,6 +199,22 @@ button.danger {
   color: var(--accent);
 }
 
+.stat-danger {
+  color: var(--danger);
+}
+
+.stat-danger strong {
+  color: var(--danger);
+}
+
+.stat-warning {
+  color: var(--warning);
+}
+
+.stat-warning strong {
+  color: var(--warning);
+}
+
 /* Heatmap */
 #heatmap {
   margin: 16px 0;
@@ -205,7 +226,6 @@ button.danger {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 12px 0;
 }
 
 input[type="range"] {
@@ -214,10 +234,31 @@ input[type="range"] {
   accent-color: var(--accent);
 }
 
+input[type="range"]:disabled {
+  opacity: 0.4;
+}
+
 .threshold-val {
   color: var(--accent);
   font-weight: 600;
   min-width: 36px;
+}
+
+/* Toggle */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.toggle-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
 }
 
 /* Results table */
@@ -271,12 +312,20 @@ input[type="range"] {
   background: rgba(232, 144, 5, 0.05);
 }
 
-.results-table tr.high-sim {
-  background: rgba(232, 69, 69, 0.08);
+.results-table tr.tier-danger {
+  background: rgba(232, 69, 69, 0.12);
 }
 
-.results-table tr.med-sim {
-  background: rgba(226, 216, 16, 0.05);
+.results-table tr.tier-danger:hover {
+  background: rgba(232, 69, 69, 0.18);
+}
+
+.results-table tr.tier-warning {
+  background: rgba(226, 216, 16, 0.08);
+}
+
+.results-table tr.tier-warning:hover {
+  background: rgba(226, 216, 16, 0.12);
 }
 
 .results-table tr.highlight {
@@ -286,6 +335,17 @@ input[type="range"] {
 @keyframes flash {
   0% { background: rgba(232, 144, 5, 0.3); }
   100% { background: transparent; }
+}
+
+/* Score badges */
+.score-danger {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.score-warning {
+  color: var(--warning);
+  font-weight: 600;
 }
 
 /* Recommendation badges */
@@ -324,7 +384,7 @@ input[type="range"] {
 /* Controls row */
 .controls-row {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
   flex-wrap: wrap;
   margin: 12px 0;

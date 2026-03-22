@@ -4,17 +4,38 @@ import { fetchViaProxy } from './proxy.js';
 import { normalizeUrl, getBaseUrl } from './utils.js';
 
 const BLOG_INCLUDE = ['/blog/', /\/\d{4}\/\d{2}\//, /\/\d{4}\/\d{2}\/\d{2}\//];
-const BLOG_EXCLUDE = ['/category/', '/tag/', '/author/', '/page/', '/feed/', '/wp-content/', '/wp-admin/', '/wp-json/'];
+const BLOG_EXCLUDE = [
+  '/category/', '/tag/', '/author/', '/page/', '/feed/',
+  '/wp-content/', '/wp-admin/', '/wp-json/', '/wp-login',
+  '/cart/', '/checkout/', '/my-account/', '/shop/',
+  '/attachment/', '/embed/'
+];
+
+const NON_POST_SLUGS = new Set([
+  'about', 'about-us', 'contact', 'contact-us', 'privacy', 'privacy-policy',
+  'terms', 'terms-of-service', 'terms-and-conditions', 'cookie-policy',
+  'disclaimer', 'sitemap', 'search', 'login', 'register', 'signup',
+  'cart', 'checkout', 'account', 'my-account', 'wishlist',
+  'thank-you', 'thanks', '404', 'sample-page', 'hello-world',
+  'home', 'homepage', 'landing', 'coming-soon', 'maintenance',
+  'subscribe', 'unsubscribe', 'confirmation', 'opt-in'
+]);
 
 function isBlogPost(url) {
   const path = new URL(url).pathname;
+
   // Exclude known non-post patterns
   if (BLOG_EXCLUDE.some(ex => path.includes(ex))) return false;
-  // Include if matches blog patterns, or if it's a leaf page (has a slug)
-  if (BLOG_INCLUDE.some(inc => typeof inc === 'string' ? path.includes(inc) : inc.test(path))) return true;
-  // Fallback: include paths that look like posts (not just /)
+
+  // Exclude known non-post slugs
   const segments = path.split('/').filter(Boolean);
-  return segments.length >= 1 && !path.endsWith('.xml');
+  if (segments.length === 1 && NON_POST_SLUGS.has(segments[0].toLowerCase())) return false;
+
+  // Include if matches blog patterns (date-based URLs, /blog/ prefix)
+  if (BLOG_INCLUDE.some(inc => typeof inc === 'string' ? path.includes(inc) : inc.test(path))) return true;
+
+  // Fallback: require 2+ path segments to avoid top-level pages
+  return segments.length >= 2 && !path.endsWith('.xml');
 }
 
 function parseUrlsFromXml(xmlText) {
@@ -43,7 +64,7 @@ function parseSitemapsFromRobots(robotsText, baseUrl) {
   return sitemaps;
 }
 
-async function discoverSitemap(siteUrl, onStatus) {
+async function discoverSitemap(siteUrl, onStatus, signal) {
   const base = getBaseUrl(siteUrl);
   const candidates = [
     `${base}/sitemap.xml`,
@@ -57,54 +78,58 @@ async function discoverSitemap(siteUrl, onStatus) {
 
   // Try each candidate
   for (const candidate of candidates) {
+    if (signal?.aborted) throw new Error('Cancelled');
     onStatus?.(`Trying ${candidate}...`);
     try {
-      const xml = await fetchViaProxy(candidate);
+      const xml = await fetchViaProxy(candidate, { signal });
       const result = parseUrlsFromXml(xml);
       if (result.type === 'index') {
-        // Follow sub-sitemaps
         for (const subUrl of result.urls) {
+          if (signal?.aborted) throw new Error('Cancelled');
           onStatus?.(`Following sub-sitemap: ${subUrl}`);
           try {
-            const subXml = await fetchViaProxy(subUrl);
+            const subXml = await fetchViaProxy(subUrl, { signal });
             const subResult = parseUrlsFromXml(subXml);
             if (subResult.type === 'urlset') {
               allUrls.push(...subResult.urls);
             }
-          } catch { /* skip failed sub-sitemaps */ }
+          } catch (e) { if (e.message === 'Cancelled') throw e; }
         }
       } else {
         allUrls.push(...result.urls);
       }
       if (allUrls.length > 0) break;
-    } catch { /* try next */ }
+    } catch (e) { if (e.message === 'Cancelled') throw e; }
   }
 
   // Fallback: check robots.txt
   if (allUrls.length === 0) {
+    if (signal?.aborted) throw new Error('Cancelled');
     onStatus?.('Checking robots.txt for sitemap directives...');
     try {
-      const robots = await fetchViaProxy(`${base}/robots.txt`);
+      const robots = await fetchViaProxy(`${base}/robots.txt`, { signal });
       const sitemapUrls = parseSitemapsFromRobots(robots, base);
       for (const smUrl of sitemapUrls) {
+        if (signal?.aborted) throw new Error('Cancelled');
         onStatus?.(`Found in robots.txt: ${smUrl}`);
         try {
-          const xml = await fetchViaProxy(smUrl);
+          const xml = await fetchViaProxy(smUrl, { signal });
           const result = parseUrlsFromXml(xml);
           if (result.type === 'index') {
             for (const subUrl of result.urls) {
+              if (signal?.aborted) throw new Error('Cancelled');
               try {
-                const subXml = await fetchViaProxy(subUrl);
+                const subXml = await fetchViaProxy(subUrl, { signal });
                 const subResult = parseUrlsFromXml(subXml);
                 if (subResult.type === 'urlset') allUrls.push(...subResult.urls);
-              } catch { /* skip */ }
+              } catch (e) { if (e.message === 'Cancelled') throw e; }
             }
           } else {
             allUrls.push(...result.urls);
           }
-        } catch { /* skip */ }
+        } catch (e) { if (e.message === 'Cancelled') throw e; }
       }
-    } catch { /* no robots.txt */ }
+    } catch (e) { if (e.message === 'Cancelled') throw e; }
   }
 
   if (allUrls.length === 0) {

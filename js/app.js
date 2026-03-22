@@ -5,18 +5,20 @@ import { extractPosts } from './extractor.js';
 import { computeAllPairs } from './tfidf.js';
 import { setApiKey, clearApiKey, hasApiKey, analyzeWithGemini } from './gemini.js';
 import { renderHeatmap, applyThreshold } from './heatmap.js';
-import { renderTable, scrollToPair, exportCsv, filterTable } from './table.js';
+import { renderTable, scrollToPair, exportCsv } from './table.js';
 
 // State
 let posts = [];
 let pairs = [];
 let matrix = [];
 let labels = [];
+let scanController = null;
 
 // DOM refs
 const urlInput = document.getElementById('site-url');
 const maxPostsInput = document.getElementById('max-posts');
 const scanBtn = document.getElementById('scan-btn');
+const cancelBtn = document.getElementById('cancel-btn');
 const statusEl = document.getElementById('status');
 const progressBar = document.getElementById('progress-bar');
 const progressFill = document.getElementById('progress-fill');
@@ -25,6 +27,7 @@ const heatmapContainer = document.getElementById('heatmap');
 const tableContainer = document.getElementById('table-container');
 const thresholdSlider = document.getElementById('threshold');
 const thresholdVal = document.getElementById('threshold-val');
+const showAllCheckbox = document.getElementById('show-all');
 const exportBtn = document.getElementById('export-csv');
 const geminiKeyInput = document.getElementById('gemini-key');
 const geminiSetBtn = document.getElementById('gemini-set');
@@ -50,6 +53,24 @@ function hideProgress() {
   progressBar.style.display = 'none';
 }
 
+function setScanUI(scanning) {
+  scanBtn.disabled = scanning;
+  scanBtn.style.display = scanning ? 'none' : '';
+  cancelBtn.style.display = scanning ? '' : 'none';
+}
+
+function getVisiblePairs() {
+  if (showAllCheckbox.checked) return pairs;
+  const threshold = parseFloat(thresholdSlider.value);
+  return pairs.filter(p => p.tfidfScore >= threshold);
+}
+
+function refreshResults(geminiResults) {
+  const threshold = showAllCheckbox.checked ? 0 : parseFloat(thresholdSlider.value);
+  applyThreshold(heatmapContainer, matrix, labels, threshold, (i, j) => scrollToPair(i, j));
+  renderTable(tableContainer, getVisiblePairs(), geminiResults);
+}
+
 // Main scan workflow
 scanBtn.addEventListener('click', async () => {
   let url = urlInput.value.trim();
@@ -57,7 +78,9 @@ scanBtn.addEventListener('click', async () => {
   if (!url.startsWith('http')) url = 'https://' + url;
 
   const maxPosts = parseInt(maxPostsInput.value) || 200;
-  scanBtn.disabled = true;
+  scanController = new AbortController();
+  const signal = scanController.signal;
+  setScanUI(true);
   resultsSection.style.display = 'none';
   posts = [];
   pairs = [];
@@ -65,7 +88,7 @@ scanBtn.addEventListener('click', async () => {
   try {
     // Step 1: Discover sitemap
     setStatus('Discovering sitemap...');
-    const urls = await discoverSitemap(url, (msg) => setStatus(msg));
+    const urls = await discoverSitemap(url, (msg) => setStatus(msg), signal);
     setStatus(`Found ${urls.length} URLs in sitemap`);
 
     if (urls.length > maxPosts) {
@@ -78,17 +101,17 @@ scanBtn.addEventListener('click', async () => {
     showProgress(0, targetUrls.length, 'Extracting...');
     const { posts: extracted, failures } = await extractPosts(targetUrls, (current, total) => {
       showProgress(current, total, `Extracted ${current} / ${total} posts`);
-    });
+    }, signal);
     posts = extracted;
     hideProgress();
 
     if (posts.length < 2) {
       setStatus('Need at least 2 posts to compare. Check if the site is accessible.', 'error');
-      scanBtn.disabled = false;
+      setScanUI(false);
       return;
     }
 
-    setStatus(`Extracted ${posts.length} posts (${failures.length} failed). Computing similarity...`);
+    setStatus(`Extracted ${posts.length} posts (${failures.length} skipped). Computing similarity...`);
 
     // Step 3: TF-IDF
     const t0 = performance.now();
@@ -99,15 +122,19 @@ scanBtn.addEventListener('click', async () => {
     labels = posts.map(p => p.title);
 
     const aboveThreshold = pairs.filter(p => p.tfidfScore >= 0.3).length;
-    setStatus(`Done! ${posts.length} posts, ${pairs.length} pairs analyzed in ${elapsed}ms. ${aboveThreshold} pairs above 0.3 threshold.`, 'success');
+    const aboveWarning = pairs.filter(p => p.tfidfScore >= 0.5).length;
+    const aboveDanger = pairs.filter(p => p.tfidfScore >= 0.7).length;
+    setStatus(`Done! ${aboveThreshold} pairs above 0.3 (${aboveWarning} need review, ${aboveDanger} critical).`, 'success');
 
     // Step 4: Show results
     resultsSection.style.display = 'block';
     statsEl.innerHTML = `
       <strong>${posts.length}</strong> posts analyzed |
-      <strong>${pairs.length}</strong> pairs |
-      <strong>${aboveThreshold}</strong> pairs with similarity &gt; 0.3 |
-      <strong>${failures.length}</strong> extraction failures |
+      <strong>${pairs.length}</strong> total pairs |
+      <span class="stat-danger"><strong>${aboveDanger}</strong> critical (&ge;0.7)</span> |
+      <span class="stat-warning"><strong>${aboveWarning}</strong> review (&ge;0.5)</span> |
+      <span><strong>${aboveThreshold}</strong> flagged (&ge;0.3)</span> |
+      <strong>${failures.length}</strong> skipped |
       Computed in <strong>${elapsed}ms</strong>
     `;
 
@@ -115,22 +142,39 @@ scanBtn.addEventListener('click', async () => {
       scrollToPair(i, j);
     });
 
-    renderTable(tableContainer, pairs.filter(p => p.tfidfScore >= parseFloat(thresholdSlider.value)));
+    refreshResults();
 
   } catch (err) {
-    setStatus(`Error: ${err.message}`, 'error');
     hideProgress();
+    if (err.message === 'Cancelled') {
+      setStatus('Scan cancelled.', 'warning');
+    } else {
+      setStatus(`Error: ${err.message}`, 'error');
+    }
   }
 
-  scanBtn.disabled = false;
+  scanController = null;
+  setScanUI(false);
+});
+
+// Cancel
+cancelBtn.addEventListener('click', () => {
+  scanController?.abort();
 });
 
 // Threshold slider
 thresholdSlider.addEventListener('input', () => {
   const val = parseFloat(thresholdSlider.value);
   thresholdVal.textContent = val.toFixed(2);
-  applyThreshold(heatmapContainer, matrix, labels, val, (i, j) => scrollToPair(i, j));
-  renderTable(tableContainer, pairs.filter(p => p.tfidfScore >= val));
+  if (!showAllCheckbox.checked) {
+    refreshResults();
+  }
+});
+
+// Show all toggle
+showAllCheckbox.addEventListener('change', () => {
+  thresholdSlider.disabled = showAllCheckbox.checked;
+  refreshResults();
 });
 
 // Export CSV
@@ -180,8 +224,7 @@ geminiRunBtn.addEventListener('click', async () => {
   try {
     const geminiResults = await analyzeWithGemini(pairsWithText);
     setStatus(`Gemini analysis complete for ${geminiResults.length} pairs`, 'success');
-    const threshold = parseFloat(thresholdSlider.value);
-    renderTable(tableContainer, pairs.filter(p => p.tfidfScore >= threshold), geminiResults);
+    refreshResults(geminiResults);
   } catch (err) {
     setStatus(`Gemini error: ${err.message}`, 'error');
     if (!hasApiKey()) {

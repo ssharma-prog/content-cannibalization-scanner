@@ -41,6 +41,18 @@ function sortAndRender(container) {
     return 0;
   });
 
+  const tierClass = (score) => {
+    if (score >= 0.7) return 'tier-danger';
+    if (score >= 0.5) return 'tier-warning';
+    return '';
+  };
+
+  const scoreClass = (score) => {
+    if (score >= 0.7) return 'score-danger';
+    if (score >= 0.5) return 'score-warning';
+    return '';
+  };
+
   const recClass = (rec) => {
     if (rec === 'merge') return 'rec-merge';
     if (rec === 'differentiate') return 'rec-diff';
@@ -52,12 +64,12 @@ function sortAndRender(container) {
     if (rec === 'merge') return 'Merge';
     if (rec === 'differentiate') return 'Differentiate';
     if (rec === 'keep') return 'Keep';
-    return rec || '—';
+    return rec || '\u2014';
   };
 
   const arrow = (col) => {
     if (sortCol !== col) return '';
-    return sortDir === -1 ? ' ▼' : ' ▲';
+    return sortDir === -1 ? ' \u25BC' : ' \u25B2';
   };
 
   container.innerHTML = `
@@ -72,12 +84,12 @@ function sortAndRender(container) {
         </tr>
       </thead>
       <tbody>
-        ${currentData.map((p, i) => `
-          <tr id="pair-${p.indexA}-${p.indexB}" class="${p.tfidfScore >= 0.5 ? 'high-sim' : p.tfidfScore >= 0.3 ? 'med-sim' : ''}">
+        ${currentData.map((p) => `
+          <tr id="pair-${p.indexA}-${p.indexB}" class="${tierClass(p.tfidfScore)}">
             <td><a href="${escapeHtml(p.urlA)}" target="_blank" rel="noopener" title="${escapeHtml(p.titleA)}">${escapeHtml(shortenTitle(p.titleA, 60))}</a></td>
             <td><a href="${escapeHtml(p.urlB)}" target="_blank" rel="noopener" title="${escapeHtml(p.titleB)}">${escapeHtml(shortenTitle(p.titleB, 60))}</a></td>
-            <td class="num">${p.tfidfScore.toFixed(3)}</td>
-            <td class="num">${p.geminiScore !== null ? p.geminiScore.toFixed(2) : '—'}</td>
+            <td class="num ${scoreClass(p.tfidfScore)}">${p.tfidfScore.toFixed(3)}</td>
+            <td class="num">${p.geminiScore !== null ? p.geminiScore.toFixed(2) : '\u2014'}</td>
             <td class="${recClass(p.recommendation)}">${recLabel(p.recommendation)}</td>
           </tr>
         `).join('')}
@@ -136,16 +148,4 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
-function filterTable(container, threshold) {
-  const filtered = currentData.filter(p => p.tfidfScore >= threshold);
-  const tbody = container.querySelector('tbody');
-  if (!tbody) return;
-  const rows = tbody.querySelectorAll('tr');
-  rows.forEach((row, i) => {
-    if (i < currentData.length) {
-      row.style.display = currentData[i].tfidfScore >= threshold ? '' : 'none';
-    }
-  });
-}
-
-export { renderTable, scrollToPair, exportCsv, filterTable };
+export { renderTable, scrollToPair, exportCsv };
