@@ -203,12 +203,16 @@ function runNgramInline(topPairs, postsData) {
   const postsMap = {};
   for (const p of postsData) postsMap[p.url] = p.text;
   const results = [];
+  let totalShared = 0;
   for (const pair of topPairs) {
     const textA = postsMap[pair.urlA] || '';
     const textB = postsMap[pair.urlB] || '';
     const { score, sharedPhrases } = computePhraseOverlap(textA, textB);
+    totalShared += sharedPhrases.length;
     results.push({ urlA: pair.urlA, urlB: pair.urlB, phraseScore: score, sharedPhrases });
   }
+  results._totalShared = totalShared;
+  results._sampleTextLen = postsData.length > 0 ? (postsData[0].text || '').length : 0;
   return results;
 }
 
@@ -249,7 +253,9 @@ ngramBtn.addEventListener('click', () => {
       ngramStatusEl.textContent = 'Running analysis...';
       setTimeout(() => {
         ngramResults = runNgramInline(pairData, postData);
-        ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs analyzed.`;
+        const ts = ngramResults._totalShared || 0;
+        const sl = ngramResults._sampleTextLen || 0;
+        ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs. ${ts} shared phrases found. First post: ${sl} chars.`;
         ngramBtn.disabled = false;
         renderTable(tableContainer, getVisiblePairs(), ngramResults);
       }, 10);
@@ -261,7 +267,9 @@ ngramBtn.addEventListener('click', () => {
     ngramStatusEl.textContent = 'Running analysis...';
     setTimeout(() => {
       ngramResults = runNgramInline(pairData, postData);
-      ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs analyzed.`;
+      const ts = ngramResults._totalShared || 0;
+      const sl = ngramResults._sampleTextLen || 0;
+      ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs. ${ts} shared phrases found. First post: ${sl} chars.`;
       ngramBtn.disabled = false;
       renderTable(tableContainer, getVisiblePairs(), ngramResults);
     }, 10);
