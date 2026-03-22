@@ -5,9 +5,9 @@ import { escapeHtml, shortenTitle } from './utils.js';
 let currentData = [];
 let sortCol = 'tfidfScore';
 let sortDir = -1; // -1 = desc
-let highlightedRow = null;
 
 function renderTable(container, pairs, geminiResults) {
+  // Merge Gemini results if available
   const geminiMap = new Map();
   if (geminiResults) {
     for (const r of geminiResults) {
@@ -41,18 +41,6 @@ function sortAndRender(container) {
     return 0;
   });
 
-  const tierClass = (score) => {
-    if (score >= 0.7) return 'tier-danger';
-    if (score >= 0.5) return 'tier-warning';
-    return '';
-  };
-
-  const scoreClass = (score) => {
-    if (score >= 0.7) return 'score-danger';
-    if (score >= 0.5) return 'score-warning';
-    return '';
-  };
-
   const recClass = (rec) => {
     if (rec === 'merge') return 'rec-merge';
     if (rec === 'differentiate') return 'rec-diff';
@@ -64,12 +52,12 @@ function sortAndRender(container) {
     if (rec === 'merge') return 'Merge';
     if (rec === 'differentiate') return 'Differentiate';
     if (rec === 'keep') return 'Keep';
-    return rec || '\u2014';
+    return rec || '—';
   };
 
   const arrow = (col) => {
     if (sortCol !== col) return '';
-    return sortDir === -1 ? ' \u25BC' : ' \u25B2';
+    return sortDir === -1 ? ' ▼' : ' ▲';
   };
 
   container.innerHTML = `
@@ -84,12 +72,12 @@ function sortAndRender(container) {
         </tr>
       </thead>
       <tbody>
-        ${currentData.map((p) => `
-          <tr id="pair-${p.indexA}-${p.indexB}" class="${tierClass(p.tfidfScore)}">
+        ${currentData.map((p, i) => `
+          <tr id="pair-${p.indexA}-${p.indexB}" class="${p.tfidfScore >= 0.5 ? 'high-sim' : p.tfidfScore >= 0.3 ? 'med-sim' : ''}">
             <td><a href="${escapeHtml(p.urlA)}" target="_blank" rel="noopener" title="${escapeHtml(p.titleA)}">${escapeHtml(shortenTitle(p.titleA, 60))}</a></td>
             <td><a href="${escapeHtml(p.urlB)}" target="_blank" rel="noopener" title="${escapeHtml(p.titleB)}">${escapeHtml(shortenTitle(p.titleB, 60))}</a></td>
-            <td class="num ${scoreClass(p.tfidfScore)}">${p.tfidfScore.toFixed(3)}</td>
-            <td class="num">${p.geminiScore !== null ? p.geminiScore.toFixed(2) : '\u2014'}</td>
+            <td class="num">${p.tfidfScore.toFixed(3)}</td>
+            <td class="num">${p.geminiScore !== null ? p.geminiScore.toFixed(2) : '—'}</td>
             <td class="${recClass(p.recommendation)}">${recLabel(p.recommendation)}</td>
           </tr>
         `).join('')}
@@ -113,29 +101,14 @@ function sortAndRender(container) {
   });
 }
 
-function highlightPair(indexA, indexB) {
-  // Clear previous
-  clearHighlight();
-
+function scrollToPair(indexA, indexB) {
   const row = document.getElementById(`pair-${indexA}-${indexB}`)
     || document.getElementById(`pair-${indexB}-${indexA}`);
   if (row) {
     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    row.classList.add('active-highlight');
-    highlightedRow = row;
+    row.classList.add('highlight');
+    setTimeout(() => row.classList.remove('highlight'), 2000);
   }
-}
-
-function clearHighlight() {
-  if (highlightedRow) {
-    highlightedRow.classList.remove('active-highlight');
-    highlightedRow = null;
-  }
-}
-
-// Kept for backwards compat but now highlightPair is preferred
-function scrollToPair(indexA, indexB) {
-  highlightPair(indexA, indexB);
 }
 
 function exportCsv() {
@@ -163,4 +136,16 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
-export { renderTable, scrollToPair, highlightPair, clearHighlight, exportCsv };
+function filterTable(container, threshold) {
+  const filtered = currentData.filter(p => p.tfidfScore >= threshold);
+  const tbody = container.querySelector('tbody');
+  if (!tbody) return;
+  const rows = tbody.querySelectorAll('tr');
+  rows.forEach((row, i) => {
+    if (i < currentData.length) {
+      row.style.display = currentData[i].tfidfScore >= threshold ? '' : 'none';
+    }
+  });
+}
+
+export { renderTable, scrollToPair, exportCsv, filterTable };

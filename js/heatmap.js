@@ -1,28 +1,17 @@
-// Plotly.js heatmap rendering with custom tooltip
-
-let tooltipEl = null;
-
-function ensureTooltip() {
-  if (tooltipEl) return tooltipEl;
-  tooltipEl = document.createElement('div');
-  tooltipEl.className = 'heatmap-tooltip';
-  document.body.appendChild(tooltipEl);
-  return tooltipEl;
-}
+// Plotly.js heatmap rendering
 
 function renderHeatmap(container, matrix, labels, onCellClick) {
   const shortLabels = labels.map(l =>
     l.length > 30 ? l.slice(0, 27) + '...' : l
   );
 
-  // Store full labels in customdata for hover events
-  const customdata = [];
+  const customText = [];
   for (let i = 0; i < labels.length; i++) {
     const row = [];
     for (let j = 0; j < labels.length; j++) {
-      row.push([labels[i], labels[j], matrix[i][j]]);
+      row.push(`${labels[i]}<br>vs<br>${labels[j]}<br>Score: ${matrix[i][j].toFixed(3)}`);
     }
-    customdata.push(row);
+    customText.push(row);
   }
 
   const data = [{
@@ -38,8 +27,8 @@ function renderHeatmap(container, matrix, labels, onCellClick) {
       [0.7, '#e84545'],
       [1.0, '#ff0000']
     ],
-    customdata,
-    hoverinfo: 'none',
+    hovertext: customText,
+    hoverinfo: 'text',
     showscale: true,
     colorbar: {
       title: 'Similarity',
@@ -78,38 +67,6 @@ function renderHeatmap(container, matrix, labels, onCellClick) {
 
   Plotly.newPlot(container, data, layout, config);
 
-  const tip = ensureTooltip();
-
-  // Custom hover tooltip
-  container.on('plotly_hover', (eventData) => {
-    if (!eventData.points || !eventData.points[0]) return;
-    const pt = eventData.points[0];
-    const cd = pt.customdata;
-    if (!cd) return;
-
-    const score = typeof cd[2] === 'number' ? cd[2].toFixed(3) : '—';
-    tip.innerHTML = `<strong>${cd[0]}</strong><br>vs<br><strong>${cd[1]}</strong><br>Score: ${score}`;
-    tip.style.display = 'block';
-
-    // Position above cursor
-    const evt = eventData.event;
-    const tipRect = tip.getBoundingClientRect();
-    let left = evt.pageX - tipRect.width / 2;
-    let top = evt.pageY - tipRect.height - 16;
-
-    // Keep in viewport
-    if (left < 4) left = 4;
-    if (left + tipRect.width > window.innerWidth - 4) left = window.innerWidth - tipRect.width - 4;
-    if (top < 4) top = evt.pageY + 16; // flip below if no room above
-
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-  });
-
-  container.on('plotly_unhover', () => {
-    tip.style.display = 'none';
-  });
-
   // Click handler
   container.on('plotly_click', (eventData) => {
     if (eventData.points && eventData.points[0]) {
@@ -117,7 +74,6 @@ function renderHeatmap(container, matrix, labels, onCellClick) {
       const i = pt.pointIndex[0];
       const j = pt.pointIndex[1];
       if (i !== j) {
-        tip.style.display = 'none';
         onCellClick?.(i, j);
       }
     }
@@ -129,18 +85,26 @@ function applyThreshold(container, matrix, labels, threshold, onCellClick) {
     Array.from(row).map(val => val >= threshold || val === 1.0 ? val : null)
   );
 
-  const customdata = [];
+  const shortLabels = labels.map(l =>
+    l.length > 30 ? l.slice(0, 27) + '...' : l
+  );
+
+  const customText = [];
   for (let i = 0; i < labels.length; i++) {
     const row = [];
     for (let j = 0; j < labels.length; j++) {
-      row.push([labels[i], labels[j], matrix[i][j]]);
+      if (filtered[i][j] !== null) {
+        row.push(`${labels[i]}<br>vs<br>${labels[j]}<br>Score: ${matrix[i][j].toFixed(3)}`);
+      } else {
+        row.push('');
+      }
     }
-    customdata.push(row);
+    customText.push(row);
   }
 
   Plotly.restyle(container, {
     z: [filtered],
-    customdata: [customdata]
+    hovertext: [customText]
   });
 }
 
