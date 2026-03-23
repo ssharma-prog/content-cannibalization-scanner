@@ -5,6 +5,7 @@ import { extractPosts } from './extractor.js';
 import { computeAllPairs } from './tfidf.js';
 import { renderHeatmap } from './heatmap.js';
 import { renderTable, scrollToPair, exportCsv, filterTable, resetNgramData } from './table.js';
+import { buildClusters, renderNetworkGraph, renderPostBreakdown } from './cluster.js';
 
 // State
 let posts = [];
@@ -34,6 +35,10 @@ const ngramBtn = document.getElementById('ngram-btn');
 const ngramTopInput = document.getElementById('ngram-top');
 const ngramSizeInput = document.getElementById('ngram-size');
 const ngramStatusEl = document.getElementById('ngram-status');
+const clusterBtn = document.getElementById('cluster-btn');
+const clusterStatusEl = document.getElementById('cluster-status');
+const networkGraphEl = document.getElementById('network-graph');
+const postBreakdownEl = document.getElementById('post-breakdown');
 const resultsSection = document.getElementById('results');
 const statsEl = document.getElementById('stats');
 
@@ -132,6 +137,7 @@ scanBtn.addEventListener('click', async () => {
     // Step 4: Show results
     resultsSection.style.display = 'block';
     ngramBtn.disabled = false;
+    clusterBtn.disabled = false;
     statsEl.innerHTML = `
       <strong>${posts.length}</strong> posts analyzed |
       <strong>${pairs.length}</strong> pairs |
@@ -307,6 +313,26 @@ ngramBtn.addEventListener('click', () => {
       renderTable(tableContainer, getVisiblePairs(), ngramResults);
     }, 10);
   }
+});
+
+// Cluster analysis
+clusterBtn.addEventListener('click', () => {
+  if (pairs.length === 0) return;
+
+  const threshold = parseFloat(thresholdSlider.value);
+  clusterStatusEl.textContent = 'Analyzing clusters...';
+  clusterBtn.disabled = true;
+
+  setTimeout(() => {
+    const { posts: problemPosts, clusters, edges } = buildClusters(pairs, threshold);
+    const totalClusters = clusters.length;
+    const largestCluster = clusters.length > 0 ? clusters[0].length : 0;
+    clusterStatusEl.textContent = `${problemPosts.length} problem posts in ${totalClusters} cluster${totalClusters !== 1 ? 's' : ''}. Largest cluster: ${largestCluster} posts.`;
+    clusterBtn.disabled = false;
+
+    renderNetworkGraph(networkGraphEl, clusters, edges);
+    renderPostBreakdown(postBreakdownEl, problemPosts);
+  }, 10);
 });
 
 // Enter key on URL input
