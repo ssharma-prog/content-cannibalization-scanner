@@ -2,6 +2,10 @@
 
 const PROXIES = [
   {
+    name: 'cloudflare-worker',
+    wrap: (url) => `https://cors-proxy.ssharma-9a3.workers.dev/?url=${encodeURIComponent(url)}`
+  },
+  {
     name: 'corsproxy.io',
     wrap: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`
   },
