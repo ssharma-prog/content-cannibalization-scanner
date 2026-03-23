@@ -40,8 +40,4 @@ async function fetchViaProxy(url, { timeoutMs = 15000, signal } = {}) {
   }
 }
 
-function getActiveProxyName() {
-  return PROXIES[activeProxy].name;
-}
-
-export { fetchViaProxy, getActiveProxyName };
+export { fetchViaProxy };

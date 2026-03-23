@@ -4,7 +4,7 @@ import { discoverSitemap, setExcludeSlugs } from './sitemap.js';
 import { extractPosts } from './extractor.js';
 import { computeAllPairs } from './tfidf.js';
 import { renderHeatmap } from './heatmap.js';
-import { renderTable, scrollToPair, exportCsv, filterTable, resetNgramData } from './table.js';
+import { renderTable, exportCsv, resetNgramData } from './table.js';
 import { buildClusters, renderNetworkGraph, renderPostBreakdown } from './cluster.js';
 
 // State

@@ -104,16 +104,6 @@ function sortAndRender(container) {
   });
 }
 
-function scrollToPair(indexA, indexB) {
-  const row = document.getElementById(`pair-${indexA}-${indexB}`)
-    || document.getElementById(`pair-${indexB}-${indexA}`);
-  if (row) {
-    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    row.classList.add('highlight');
-    setTimeout(() => row.classList.remove('highlight'), 2000);
-  }
-}
-
 function exportCsv() {
   if (currentData.length === 0) return;
 
@@ -145,20 +135,8 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
-function filterTable(container, threshold) {
-  const filtered = currentData.filter(p => p.tfidfScore >= threshold);
-  const tbody = container.querySelector('tbody');
-  if (!tbody) return;
-  const rows = tbody.querySelectorAll('tr');
-  rows.forEach((row, i) => {
-    if (i < currentData.length) {
-      row.style.display = currentData[i].tfidfScore >= threshold ? '' : 'none';
-    }
-  });
-}
-
 function resetNgramData() {
   hasNgramData = false;
 }
 
-export { renderTable, scrollToPair, exportCsv, filterTable, resetNgramData };
+export { renderTable, exportCsv, resetNgramData };

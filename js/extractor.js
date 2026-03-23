@@ -115,4 +115,4 @@ async function extractPosts(urls, onProgress, signal) {
   return { posts: results, failures };
 }
 
-export { extractPosts, extractFromHtml };
+export { extractPosts };
