@@ -61,7 +61,13 @@
     <!-- Results -->
     <div id="results" style="display:none">
       <div class="card">
-        <h2>Results</h2>
+        <div class="results-header">
+          <h2>Results</h2>
+          <details id="failure-report" class="failure-details" style="display:none">
+            <summary id="failure-summary">0 pages skipped</summary>
+            <ul id="failure-list" class="failure-list"></ul>
+          </details>
+        </div>
         <div id="stats" class="stats"></div>
 
         <!-- Heatmap + Cluster button -->

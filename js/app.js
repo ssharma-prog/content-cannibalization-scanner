@@ -49,6 +49,9 @@ const networkGraphEl = document.getElementById('network-graph');
 const postBreakdownEl = document.getElementById('post-breakdown');
 const resultsSection = document.getElementById('results');
 const statsEl = document.getElementById('stats');
+const failureReport = document.getElementById('failure-report');
+const failureSummary = document.getElementById('failure-summary');
+const failureList = document.getElementById('failure-list');
 
 function setStatus(msg, type = 'info') {
   statusEl.textContent = msg;
@@ -94,6 +97,18 @@ tabUrl.addEventListener('click', () => {
   modeUrl.style.display = '';
   modeUpload.style.display = 'none';
 });
+
+function showFailures(failures) {
+  if (!failures || failures.length === 0) {
+    failureReport.style.display = 'none';
+    return;
+  }
+  failureReport.style.display = '';
+  failureSummary.textContent = `${failures.length} page${failures.length !== 1 ? 's' : ''} skipped`;
+  failureList.innerHTML = failures.map(f =>
+    `<li><span class="failure-url">${f.url}</span><span class="failure-reason">${f.reason}</span></li>`
+  ).join('');
+}
 
 // Shared: run TF-IDF and show results
 function runAnalysis(extractedPosts) {
@@ -152,6 +167,7 @@ uploadBtn.addEventListener('click', () => {
         return;
       }
       setStatus(`Parsed ${imported.length} posts from export.`);
+      showFailures(null);
       runAnalysis(imported);
     } catch (err) {
       setStatus(`Error parsing file: ${err.message}`, 'error');
@@ -211,6 +227,7 @@ scanBtn.addEventListener('click', async () => {
     }
 
     setStatus(`Extracted ${extracted.length} posts (${failures.length} failed). Computing similarity...`);
+    showFailures(failures);
     runAnalysis(extracted);
 
   } catch (err) {

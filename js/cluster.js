@@ -151,7 +151,8 @@ function renderNetworkGraph(container, clusters, edges) {
     const my = (e.clientY - rect.top) * scaleY;
 
     let found = null;
-    for (const node of nodeData) {
+    for (let i = nodeData.length - 1; i >= 0; i--) {
+      const node = nodeData[i];
       const dx = mx - node.x;
       const dy = my - node.y;
       if (dx * dx + dy * dy <= (node.radius + 4) * (node.radius + 4)) {

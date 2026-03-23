@@ -458,6 +458,61 @@ input[type="range"] {
   overflow-y: auto;
 }
 
+/* Results header */
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Failure report */
+.failure-details {
+  font-size: 0.85rem;
+}
+
+.failure-details summary {
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.failure-details summary:hover {
+  color: var(--accent);
+}
+
+.failure-list {
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.failure-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.failure-url {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 400px;
+}
+
+.failure-reason {
+  color: var(--danger);
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
 /* Network graph */
 #network-graph {
   margin: 16px 0;
