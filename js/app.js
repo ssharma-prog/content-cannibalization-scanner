@@ -32,6 +32,7 @@ const thresholdVal = document.getElementById('threshold-val');
 const exportBtn = document.getElementById('export-csv');
 const ngramBtn = document.getElementById('ngram-btn');
 const ngramTopInput = document.getElementById('ngram-top');
+const ngramSizeInput = document.getElementById('ngram-size');
 const ngramStatusEl = document.getElementById('ngram-status');
 const resultsSection = document.getElementById('results');
 const statsEl = document.getElementById('stats');
@@ -199,10 +200,10 @@ function computePhraseOverlap(textA, textB) {
   return { score, sharedPhrases: shared.slice(0, 10) };
 }
 
-function buildBoilerplateSet(postsData) {
+function buildBoilerplateSet(postsData, n) {
   const phraseCounts = {};
   for (const p of postsData) {
-    const ngrams = getNgrams(p.text || '', 4);
+    const ngrams = getNgrams(p.text || '', n);
     for (const phrase of ngrams) {
       phraseCounts[phrase] = (phraseCounts[phrase] || 0) + 1;
     }
@@ -215,9 +216,9 @@ function buildBoilerplateSet(postsData) {
   return boilerplate;
 }
 
-function computePhraseOverlapFiltered(textA, textB, boilerplate) {
-  const ngramsA = getNgrams(textA, 4);
-  const ngramsB = getNgrams(textB, 4);
+function computePhraseOverlapFiltered(textA, textB, boilerplate, n) {
+  const ngramsA = getNgrams(textA, n);
+  const ngramsB = getNgrams(textB, n);
   if (ngramsA.size === 0 || ngramsB.size === 0) return { score: 0, sharedPhrases: [] };
   const shared = [];
   for (const phrase of ngramsA) {
@@ -229,16 +230,16 @@ function computePhraseOverlapFiltered(textA, textB, boilerplate) {
   return { score, sharedPhrases: shared.slice(0, 10) };
 }
 
-function runNgramInline(topPairs, postsData) {
+function runNgramInline(topPairs, postsData, n) {
   const postsMap = {};
   for (const p of postsData) postsMap[p.url] = p.text;
-  const boilerplate = buildBoilerplateSet(postsData);
+  const boilerplate = buildBoilerplateSet(postsData, n);
   const results = [];
   let totalShared = 0;
   for (const pair of topPairs) {
     const textA = postsMap[pair.urlA] || '';
     const textB = postsMap[pair.urlB] || '';
-    const { score, sharedPhrases } = computePhraseOverlapFiltered(textA, textB, boilerplate);
+    const { score, sharedPhrases } = computePhraseOverlapFiltered(textA, textB, boilerplate, n);
     totalShared += sharedPhrases.length;
     results.push({ urlA: pair.urlA, urlB: pair.urlB, phraseScore: score, sharedPhrases });
   }
@@ -251,6 +252,7 @@ ngramBtn.addEventListener('click', () => {
   if (pairs.length === 0) return;
 
   const topN = parseInt(ngramTopInput.value) || 20;
+  const ngramSize = parseInt(ngramSizeInput.value) || 6;
   const topPairs = pairs.slice(0, topN);
   const pairData = topPairs.map(p => ({ urlA: p.urlA, urlB: p.urlB }));
   const postData = posts.map(p => ({ url: p.url, text: p.text }));
@@ -283,7 +285,7 @@ ngramBtn.addEventListener('click', () => {
       ngramWorker = null;
       ngramStatusEl.textContent = 'Running analysis...';
       setTimeout(() => {
-        ngramResults = runNgramInline(pairData, postData);
+        ngramResults = runNgramInline(pairData, postData, ngramSize);
         const ts = ngramResults._totalShared || 0;
         const bp = ngramResults._boilerplateCount || 0;
         ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs. ${ts} shared phrases found. ${bp} boilerplate phrases filtered.`;
@@ -292,12 +294,12 @@ ngramBtn.addEventListener('click', () => {
       }, 10);
     };
 
-    ngramWorker.postMessage({ pairs: pairData, posts: postData });
+    ngramWorker.postMessage({ pairs: pairData, posts: postData, ngramSize });
   } catch {
     // Worker creation failed — run inline
     ngramStatusEl.textContent = 'Running analysis...';
     setTimeout(() => {
-      ngramResults = runNgramInline(pairData, postData);
+      ngramResults = runNgramInline(pairData, postData, ngramSize);
       const ts = ngramResults._totalShared || 0;
       const sl = ngramResults._sampleTextLen || 0;
       ngramStatusEl.textContent = `Done! ${ngramResults.length} pairs. ${ts} shared phrases found. First post: ${sl} chars.`;

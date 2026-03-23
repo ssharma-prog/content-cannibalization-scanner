@@ -10,10 +10,10 @@ function getNgrams(text, n) {
   return ngrams;
 }
 
-function buildBoilerplateSet(posts) {
+function buildBoilerplateSet(posts, n) {
   const phraseCounts = {};
   for (const p of posts) {
-    const ngrams = getNgrams(p.text || '', 4);
+    const ngrams = getNgrams(p.text || '', n);
     for (const phrase of ngrams) {
       phraseCounts[phrase] = (phraseCounts[phrase] || 0) + 1;
     }
@@ -26,9 +26,9 @@ function buildBoilerplateSet(posts) {
   return boilerplate;
 }
 
-function computePhraseOverlap(textA, textB, boilerplate) {
-  const ngramsA = getNgrams(textA, 4);
-  const ngramsB = getNgrams(textB, 4);
+function computePhraseOverlap(textA, textB, boilerplate, n) {
+  const ngramsA = getNgrams(textA, n);
+  const ngramsB = getNgrams(textB, n);
 
   if (ngramsA.size === 0 || ngramsB.size === 0) return { score: 0, sharedPhrases: [] };
 
@@ -46,20 +46,21 @@ function computePhraseOverlap(textA, textB, boilerplate) {
 }
 
 self.onmessage = function(e) {
-  const { pairs, posts } = e.data;
+  const { pairs, posts, ngramSize = 6 } = e.data;
+  const n = ngramSize;
   const postsMap = {};
   for (const p of posts) {
     postsMap[p.url] = p.text;
   }
 
-  const boilerplate = buildBoilerplateSet(posts);
+  const boilerplate = buildBoilerplateSet(posts, n);
 
   const results = [];
   for (let i = 0; i < pairs.length; i++) {
     const pair = pairs[i];
     const textA = postsMap[pair.urlA] || '';
     const textB = postsMap[pair.urlB] || '';
-    const { score, sharedPhrases } = computePhraseOverlap(textA, textB, boilerplate);
+    const { score, sharedPhrases } = computePhraseOverlap(textA, textB, boilerplate, n);
 
     results.push({
       urlA: pair.urlA,
