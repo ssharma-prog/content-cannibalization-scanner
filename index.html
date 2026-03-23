@@ -9,8 +9,13 @@
 </head>
 <body>
   <div class="container">
-    <h1>Content Cannibalization Scanner</h1>
-    <p class="subtitle">Find overlapping blog posts that compete for the same search queries</p>
+    <div class="header-row">
+      <div>
+        <h1>Content Cannibalization Scanner</h1>
+        <p class="subtitle">Find overlapping blog posts that compete for the same search queries</p>
+      </div>
+      <a href="javascript:void(0)" onclick="window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ','_blank')" class="support-btn">Support the Creator</a>
+    </div>
 
     <!-- Scan Input -->
     <div class="card">
@@ -38,8 +43,11 @@
         <h2>Results</h2>
         <div id="stats" class="stats"></div>
 
-        <!-- Heatmap -->
-        <div id="heatmap"></div>
+        <!-- Heatmap + Cluster button -->
+        <div class="heatmap-row">
+          <div id="heatmap"></div>
+          <button id="cluster-btn" class="cluster-btn" disabled>Run Cluster Analysis</button>
+        </div>
 
         <!-- Controls -->
         <div class="controls-row">
@@ -66,11 +74,9 @@
       </div>
 
       <!-- Phase 2: Cluster Analysis -->
-      <div class="card">
-        <div class="controls-row">
-          <button id="cluster-btn" class="secondary" disabled>Run Cluster Analysis</button>
-          <span id="cluster-status" class="ngram-status"></span>
-        </div>
+      <div class="card" id="cluster-results" style="display:none">
+        <h2>Cluster Analysis</h2>
+        <span id="cluster-status" class="ngram-status"></span>
         <div id="network-graph"></div>
         <div id="post-breakdown"></div>
       </div>

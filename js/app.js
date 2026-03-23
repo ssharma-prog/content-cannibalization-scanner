@@ -37,6 +37,7 @@ const ngramSizeInput = document.getElementById('ngram-size');
 const ngramStatusEl = document.getElementById('ngram-status');
 const clusterBtn = document.getElementById('cluster-btn');
 const clusterStatusEl = document.getElementById('cluster-status');
+const clusterResultsEl = document.getElementById('cluster-results');
 const networkGraphEl = document.getElementById('network-graph');
 const postBreakdownEl = document.getElementById('post-breakdown');
 const resultsSection = document.getElementById('results');
@@ -329,6 +330,7 @@ clusterBtn.addEventListener('click', () => {
     const largestCluster = clusters.length > 0 ? clusters[0].length : 0;
     clusterStatusEl.textContent = `${problemPosts.length} problem posts in ${totalClusters} cluster${totalClusters !== 1 ? 's' : ''}. Largest cluster: ${largestCluster} posts.`;
     clusterBtn.disabled = false;
+    clusterResultsEl.style.display = 'block';
 
     renderNetworkGraph(networkGraphEl, clusters, edges);
     renderPostBreakdown(postBreakdownEl, problemPosts);
