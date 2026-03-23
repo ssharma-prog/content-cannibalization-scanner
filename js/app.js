@@ -437,7 +437,7 @@ document.getElementById('clear-btn').addEventListener('click', () => {
 // Support button
 document.getElementById('support-btn').addEventListener('click', (e) => {
   e.preventDefault();
-  window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
+  window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank', 'noopener,noreferrer');
 });
 
 // Enter key on URL input

@@ -104,6 +104,18 @@ function sortAndRender(container) {
   });
 }
 
+// Neutralize CSV formula injection: prefix dangerous chars with a tab
+function csvSafe(val) {
+  const str = String(val);
+  if (/^[=+\-@\t\r]/.test(str)) return `\t${str}`;
+  return str;
+}
+
+function csvQuote(val) {
+  const safe = csvSafe(val);
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
 function exportCsv() {
   if (currentData.length === 0) return;
 
@@ -112,15 +124,15 @@ function exportCsv() {
 
   const rows = currentData.map(p => {
     const row = [
-      `"${p.titleA.replace(/"/g, '""')}"`,
-      p.urlA,
-      `"${p.titleB.replace(/"/g, '""')}"`,
-      p.urlB,
+      csvQuote(p.titleA),
+      csvQuote(p.urlA),
+      csvQuote(p.titleB),
+      csvQuote(p.urlB),
       p.tfidfScore
     ];
     if (hasNgramData) {
       row.push(p.phraseScore ?? '');
-      row.push(`"${(p.sharedPhrases || []).join('; ').replace(/"/g, '""')}"`);
+      row.push(csvQuote((p.sharedPhrases || []).join('; ')));
     }
     return row;
   });
