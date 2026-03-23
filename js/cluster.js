@@ -128,6 +128,58 @@ function renderNetworkGraph(container, clusters, edges) {
     ctx.textAlign = 'center';
     ctx.fillText(label, pos.x, pos.y + radius + 12);
   }
+
+  // Hover tooltip
+  let tip = document.querySelector('.graph-tooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.className = 'graph-tooltip';
+    document.body.appendChild(tip);
+  }
+
+  const nodeData = allNodes.map(node => {
+    const pos = positions.get(node.url);
+    const radius = 4 + node.connections.length * 2;
+    return { ...node, x: pos.x, y: pos.y, radius };
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
+
+    let found = null;
+    for (const node of nodeData) {
+      const dx = mx - node.x;
+      const dy = my - node.y;
+      if (dx * dx + dy * dy <= (node.radius + 4) * (node.radius + 4)) {
+        found = node;
+        break;
+      }
+    }
+
+    if (found) {
+      canvas.style.cursor = 'pointer';
+      tip.innerHTML = `<strong>${escapeHtml(found.title)}</strong><br><span style="font-size:0.8rem;color:#a0a0b0">${escapeHtml(found.url)}</span><br>${found.connections.length} conflict${found.connections.length !== 1 ? 's' : ''}`;
+      tip.style.display = 'block';
+      let left = e.pageX - tip.offsetWidth / 2;
+      let top = e.pageY - tip.offsetHeight - 14;
+      if (left < 4) left = 4;
+      if (top < 4) top = e.pageY + 14;
+      tip.style.left = left + 'px';
+      tip.style.top = top + 'px';
+    } else {
+      canvas.style.cursor = '';
+      tip.style.display = 'none';
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    tip.style.display = 'none';
+    canvas.style.cursor = '';
+  });
 }
 
 function layoutNodes(nodes, edges, width, height) {
