@@ -337,6 +337,12 @@ clusterBtn.addEventListener('click', () => {
   }, 10);
 });
 
+// Support button
+document.getElementById('support-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
+});
+
 // Enter key on URL input
 urlInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') scanBtn.click();
