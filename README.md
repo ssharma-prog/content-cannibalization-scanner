@@ -34,12 +34,12 @@ Static single-page tool that finds overlapping blog posts competing for the same
 
 ## Privacy
 
-- **No data leaves the browser** — all analysis runs client-side
+- **Upload mode is fully offline** — no data leaves the browser, all analysis runs client-side
+- **URL scan mode** routes requests through CORS proxies to fetch public pages — scanned URLs are visible to the proxy services
 - **No cookies, localStorage, or persistence** — data is gone on refresh
 - **No analytics or tracking** — zero third-party scripts
 - **No backend** — static files hosted on GitHub Pages
 - **Clear All Data button** — wipes everything from memory instantly
-- **GDPR compliant** — nothing to comply with when no data is collected
 
 ## Technical Details
 
