@@ -43,7 +43,33 @@ function isLoginPage(html) {
   for (const pattern of LOGIN_SIGNALS) {
     if (pattern.test(html)) matches++;
   }
-  return matches >= 2; // require 2+ signals to avoid false positives
+  return matches >= 2;
+}
+
+const BLOCKED_SIGNALS = [
+  /access\s+denied/i,
+  /cloudflare/i,
+  /attention\s+required/i,
+  /ray\s+id/i,
+  /checking\s+(your|if\s+the\s+site)\s+/i,
+  /enable\s+javascript\s+and\s+cookies/i,
+  /just\s+a\s+moment/i
+];
+
+function isBlockedPage(html) {
+  let matches = 0;
+  for (const pattern of BLOCKED_SIGNALS) {
+    if (pattern.test(html)) matches++;
+  }
+  return matches >= 2;
+}
+
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return hash;
 }
 
 function extractFromHtml(html, url) {
@@ -80,6 +106,7 @@ function extractFromHtml(html, url) {
 async function extractPosts(urls, onProgress, signal) {
   const results = [];
   const failures = [];
+  const contentHashes = new Map();
   const batchSize = 5;
 
   for (let i = 0; i < urls.length; i += batchSize) {
@@ -92,11 +119,23 @@ async function extractPosts(urls, onProgress, signal) {
           failures.push({ url, reason: 'Login page detected' });
           return null;
         }
+        if (isBlockedPage(html)) {
+          failures.push({ url, reason: 'Blocked by Cloudflare/WAF' });
+          return null;
+        }
         const extracted = extractFromHtml(html, url);
         if (extracted.text.length < 50) {
           failures.push({ url, reason: 'Too little content' });
           return null;
         }
+        // Deduplicate: skip if another URL returned identical content
+        const hash = simpleHash(extracted.text.slice(100, 600));
+        const existing = contentHashes.get(hash);
+        if (existing) {
+          failures.push({ url, reason: `Duplicate of ${existing}` });
+          return null;
+        }
+        contentHashes.set(hash, url);
         return extracted;
       } catch (err) {
         if (err.message === 'Cancelled') throw err;
