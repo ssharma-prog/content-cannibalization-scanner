@@ -402,6 +402,20 @@ clusterBtn.addEventListener('click', () => {
   }, 10);
 });
 
+// Clear all data
+document.getElementById('clear-btn').addEventListener('click', () => {
+  posts = [];
+  pairs = [];
+  matrix = [];
+  labels = [];
+  ngramResults = null;
+  resetNgramData();
+  resultsSection.style.display = 'none';
+  clusterResultsEl.style.display = 'none';
+  wpFileInput.value = '';
+  setStatus('All data cleared.', 'info');
+});
+
 // Support button
 document.getElementById('support-btn').addEventListener('click', (e) => {
   e.preventDefault();
