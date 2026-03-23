@@ -334,6 +334,8 @@ clusterBtn.addEventListener('click', () => {
 
     renderNetworkGraph(networkGraphEl, clusters, edges);
     renderPostBreakdown(postBreakdownEl, problemPosts);
+
+    clusterResultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 10);
 });
 
