@@ -7,6 +7,7 @@ import { renderHeatmap } from './heatmap.js';
 import { renderTable, exportCsv, resetNgramData } from './table.js';
 import { buildClusters, renderNetworkGraph, renderPostBreakdown } from './cluster.js';
 import { parseWordPressExport } from './wp-import.js';
+import { escapeHtml } from './utils.js';
 
 // State
 let posts = [];
@@ -106,7 +107,7 @@ function showFailures(failures) {
   failureReport.style.display = '';
   failureSummary.textContent = `${failures.length} page${failures.length !== 1 ? 's' : ''} skipped`;
   failureList.innerHTML = failures.map(f =>
-    `<li><span class="failure-url">${f.url}</span><span class="failure-reason">${f.reason}</span></li>`
+    `<li><span class="failure-url">${escapeHtml(f.url)}</span><span class="failure-reason">${escapeHtml(f.reason)}</span></li>`
   ).join('');
 }
 
