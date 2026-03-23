@@ -12,6 +12,9 @@ function parseWordPressExport(xmlText) {
     const postType = item.querySelector('post_type')?.textContent?.trim();
     if (postType && postType !== 'post') continue;
 
+    const status = item.querySelector('status')?.textContent?.trim();
+    if (status && status !== 'publish') continue;
+
     const title = item.querySelector('title')?.textContent?.trim() || '';
     const link = item.querySelector('link')?.textContent?.trim() || '';
     const contentEncoded = item.getElementsByTagNameNS('*', 'encoded');
