@@ -6,6 +6,7 @@ import { computeAllPairs } from './tfidf.js';
 import { renderHeatmap } from './heatmap.js';
 import { renderTable, exportCsv, resetNgramData } from './table.js';
 import { buildClusters, renderNetworkGraph, renderPostBreakdown } from './cluster.js';
+import { parseWordPressExport } from './wp-import.js';
 
 // State
 let posts = [];
@@ -16,7 +17,13 @@ let scanController = null;
 let ngramResults = null;
 let ngramWorker = null;
 
-// DOM refs
+// DOM refs — tabs
+const tabUpload = document.getElementById('tab-upload');
+const tabUrl = document.getElementById('tab-url');
+const modeUpload = document.getElementById('mode-upload');
+const modeUrl = document.getElementById('mode-url');
+const wpFileInput = document.getElementById('wp-file');
+const uploadBtn = document.getElementById('upload-btn');
 const urlInput = document.getElementById('site-url');
 const maxPostsInput = document.getElementById('max-posts');
 const excludeSlugsInput = document.getElementById('exclude-slugs');
@@ -73,7 +80,88 @@ function debounce(fn, ms) {
   };
 }
 
-// Main scan workflow
+// Tab switching
+tabUpload.addEventListener('click', () => {
+  tabUpload.classList.add('active');
+  tabUrl.classList.remove('active');
+  modeUpload.style.display = '';
+  modeUrl.style.display = 'none';
+});
+
+tabUrl.addEventListener('click', () => {
+  tabUrl.classList.add('active');
+  tabUpload.classList.remove('active');
+  modeUrl.style.display = '';
+  modeUpload.style.display = 'none';
+});
+
+// Shared: run TF-IDF and show results
+function runAnalysis(extractedPosts) {
+  posts = extractedPosts;
+
+  if (posts.length < 2) {
+    setStatus('Need at least 2 posts to compare.', 'error');
+    return;
+  }
+
+  setStatus(`Analyzing ${posts.length} posts...`);
+
+  const t0 = performance.now();
+  const result = computeAllPairs(posts);
+  const elapsed = Math.round(performance.now() - t0);
+  pairs = result.pairs;
+  matrix = result.matrix;
+  labels = posts.map(p => p.title);
+
+  const aboveThreshold = pairs.filter(p => p.tfidfScore >= 0.3).length;
+  setStatus(`Done! ${posts.length} posts, ${pairs.length} pairs analyzed in ${elapsed}ms. ${aboveThreshold} pairs above 0.3 threshold.`, 'success');
+
+  resultsSection.style.display = 'block';
+  ngramBtn.disabled = false;
+  clusterBtn.disabled = false;
+  clusterResultsEl.style.display = 'none';
+  statsEl.innerHTML = `
+    <strong>${posts.length}</strong> posts analyzed |
+    <strong>${pairs.length}</strong> pairs |
+    <strong>${aboveThreshold}</strong> pairs with similarity &gt; 0.3 |
+    Computed in <strong>${elapsed}ms</strong>
+  `;
+
+  renderHeatmap(heatmapContainer, matrix);
+  renderTable(tableContainer, getVisiblePairs());
+}
+
+// Upload WordPress XML
+uploadBtn.addEventListener('click', () => {
+  const file = wpFileInput.files[0];
+  if (!file) { setStatus('Select a WordPress export file', 'error'); return; }
+
+  setStatus('Reading file...');
+  ngramResults = null;
+  resetNgramData();
+  resultsSection.style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const xmlText = e.target.result;
+      setStatus('Parsing WordPress export...');
+      const imported = parseWordPressExport(xmlText);
+      if (imported.length === 0) {
+        setStatus('No posts found in the export file. Make sure it contains published posts.', 'error');
+        return;
+      }
+      setStatus(`Parsed ${imported.length} posts from export.`);
+      runAnalysis(imported);
+    } catch (err) {
+      setStatus(`Error parsing file: ${err.message}`, 'error');
+    }
+  };
+  reader.onerror = () => setStatus('Error reading file', 'error');
+  reader.readAsText(file);
+});
+
+// URL scan workflow
 scanBtn.addEventListener('click', async () => {
   let url = urlInput.value.trim();
   if (!url) { setStatus('Enter a URL', 'error'); return; }
@@ -122,33 +210,8 @@ scanBtn.addEventListener('click', async () => {
       return;
     }
 
-    setStatus(`Extracted ${posts.length} posts (${failures.length} failed). Computing similarity...`);
-
-    // Step 3: TF-IDF
-    const t0 = performance.now();
-    const result = computeAllPairs(posts);
-    const elapsed = Math.round(performance.now() - t0);
-    pairs = result.pairs;
-    matrix = result.matrix;
-    labels = posts.map(p => p.title);
-
-    const aboveThreshold = pairs.filter(p => p.tfidfScore >= 0.3).length;
-    setStatus(`Done! ${posts.length} posts, ${pairs.length} pairs analyzed in ${elapsed}ms. ${aboveThreshold} pairs above 0.3 threshold.`, 'success');
-
-    // Step 4: Show results
-    resultsSection.style.display = 'block';
-    ngramBtn.disabled = false;
-    clusterBtn.disabled = false;
-    statsEl.innerHTML = `
-      <strong>${posts.length}</strong> posts analyzed |
-      <strong>${pairs.length}</strong> pairs |
-      <strong>${aboveThreshold}</strong> pairs with similarity &gt; 0.3 |
-      <strong>${failures.length}</strong> extraction failures |
-      Computed in <strong>${elapsed}ms</strong>
-    `;
-
-    renderHeatmap(heatmapContainer, matrix);
-    renderTable(tableContainer, getVisiblePairs());
+    setStatus(`Extracted ${extracted.length} posts (${failures.length} failed). Computing similarity...`);
+    runAnalysis(extracted);
 
   } catch (err) {
     hideProgress();

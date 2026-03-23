@@ -18,19 +18,38 @@
       <a href="#" id="support-btn" class="support-btn">Support the Creator</a>
     </div>
 
-    <!-- Scan Input -->
+    <p class="disclaimer">Results are indicators only. Content overlap doesn't always mean cannibalization — search intent, backlinks, internal linking, and other SEO factors also determine whether posts actually compete.</p>
+
+    <!-- Tab selector -->
     <div class="card">
-      <h2>Scan Website</h2>
-      <div class="input-row">
-        <input type="url" id="site-url" placeholder="https://example.com" autocomplete="url">
-        <label for="max-posts">Max posts:</label>
-        <input type="number" id="max-posts" value="200" min="2" max="1000">
-        <button id="scan-btn">Scan</button>
-        <button id="cancel-btn" class="danger" style="display:none">Cancel</button>
+      <div class="tab-row">
+        <button id="tab-upload" class="tab active">Upload WordPress Export (Recommended)</button>
+        <button id="tab-url" class="tab">Scan by URL</button>
       </div>
-      <p class="disclaimer">Results are indicators only. Content overlap doesn't always mean cannibalization — search intent, backlinks, internal linking, and other SEO factors also determine whether posts actually compete.</p>
-      <label for="exclude-slugs" style="margin-top: 10px; display: block;">Exceptions</label>
-      <input type="text" id="exclude-slugs" value="about, about-us, contact, contact-us, privacy, privacy-policy, terms, terms-of-service, terms-and-conditions, cookie-policy, disclaimer, cart, checkout, account, my-account, wishlist, login, register, signup, thank-you, sample-page, home" placeholder="Slugs to exclude (comma-separated)" style="width: 100%; margin-top: 4px;">
+
+      <!-- Upload mode -->
+      <div id="mode-upload" class="tab-content">
+        <p class="mode-desc">Export your posts from WordPress (<a href="https://www.wpbeginner.com/wp-tutorials/how-to-export-your-wordpress-site/" target="_blank" rel="noopener">how to export</a>) and upload the XML file. Most accurate — bypasses Cloudflare and CORS issues.</p>
+        <div class="input-row" style="margin-top:10px;">
+          <input type="file" id="wp-file" accept=".xml">
+          <button id="upload-btn">Analyze</button>
+        </div>
+      </div>
+
+      <!-- URL mode -->
+      <div id="mode-url" class="tab-content" style="display:none">
+        <p class="mode-desc">Scan a public website via its sitemap. Results may vary — some pages may be blocked by Cloudflare or the CORS proxy.</p>
+        <div class="input-row" style="margin-top:10px;">
+          <input type="url" id="site-url" placeholder="https://example.com" autocomplete="url">
+          <label for="max-posts">Max posts:</label>
+          <input type="number" id="max-posts" value="200" min="2" max="1000">
+          <button id="scan-btn">Scan</button>
+          <button id="cancel-btn" class="danger" style="display:none">Cancel</button>
+        </div>
+        <label for="exclude-slugs" style="margin-top: 10px; display: block;">Exceptions</label>
+        <input type="text" id="exclude-slugs" value="about, about-us, contact, contact-us, privacy, privacy-policy, terms, terms-of-service, terms-and-conditions, cookie-policy, disclaimer, cart, checkout, account, my-account, wishlist, login, register, signup, thank-you, sample-page, home" placeholder="Slugs to exclude (comma-separated)" style="width: 100%; margin-top: 4px;">
+      </div>
+
       <div id="status" class="status info"></div>
       <div id="progress-bar" class="progress-bar">
         <div id="progress-fill" class="progress-fill"></div>
