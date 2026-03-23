@@ -188,7 +188,7 @@ scanBtn.addEventListener('click', async () => {
   const excludeText = excludeSlugsInput.value.trim();
   setExcludeSlugs(excludeText ? excludeText.split(',') : []);
 
-  const maxPosts = parseInt(maxPostsInput.value) || 200;
+  const maxPosts = Math.min(parseInt(maxPostsInput.value) || 200, 10000);
   scanController = new AbortController();
   const signal = scanController.signal;
   scanBtn.style.display = 'none';
