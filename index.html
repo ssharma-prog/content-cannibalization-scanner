@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Content Cannibalization Scanner</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤦</text></svg>">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://cors-proxy.ssharma-9a3.workers.dev/ https://corsproxy.io/ https://api.allorigins.win/; img-src 'self' data:; worker-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; connect-src https://cors-proxy.ssharma-9a3.workers.dev/ https://corsproxy.io/ https://api.allorigins.win/ https://cloudflareinsights.com; img-src 'self' data:; worker-src 'self';">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -112,5 +112,6 @@
   </div>
 
   <script type="module" src="js/app.js"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "c80dcf36ef1d4408b534c0281baba31f"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
